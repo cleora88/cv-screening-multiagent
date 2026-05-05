@@ -1,0 +1,44 @@
+[
+  {
+    "candidate_id": "eval_001",
+    "job_id": "job_ml_001",
+    "cv_text": "Senior machine learning engineer with 5 years experience in python pytorch deep learning sql docker and aws. Led NLP projects and deployed models to production.",
+    "job_text": "Machine learning engineer with strong python pytorch deep learning skills. Must have 3 years experience, sql docker aws and nlp experience. Project ownership and teamwork are important.",
+    "expected_label": "High"
+  },
+  {
+    "candidate_id": "eval_002",
+    "job_id": "job_data_001",
+    "cv_text": "Data analyst with 2 years experience in python pandas sql and dashboards. Built forecasting projects and worked closely with stakeholders.",
+    "job_text": "Data scientist proficient in python pandas numpy sql machine learning. At least 2 years experience with data analysis and visualization required.",
+    "expected_label": "Medium"
+  },
+  {
+    "candidate_id": "eval_003",
+    "job_id": "job_devops_001",
+    "cv_text": "DevOps engineer with 6 years experience in docker kubernetes linux aws azure and python automation. Led platform reliability initiatives.",
+    "job_text": "DevOps engineer skilled in docker kubernetes linux aws azure. Requires 4 years experience. Familiarity with python and git automation required.",
+    "expected_label": "High"
+  },
+  {
+    "candidate_id": "eval_004",
+    "job_id": "job_web_001",
+    "cv_text": "Frontend developer with javascript react and nodejs experience. Worked on two client projects and collaborated with product teams.",
+    "job_text": "Web developer with javascript react nodejs experience. Knowledge of mongodb redis and docker is a plus. Strong collaboration expected.",
+    "expected_label": "Medium"
+  },
+  {
+    "candidate_id": "eval_005",
+    "job_id": "job_ml_001",
+    "cv_text": "Recent graduate with basic python and html skills. No real project ownership and no cloud exposure yet.",
+    "job_text": "Machine learning engineer with strong python pytorch deep learning skills. Must have 3 years experience, sql docker aws and nlp experience. Project ownership and teamwork are important.",
+    "expected_label": "Low"
+  },
+  {
+    "candidate_id": "eval_006",
+    "job_id": "job_devops_001",
+    "cv_text": "Support technician with linux basics and some scripting. No kubernetes or cloud production experience.",
+    "job_text": "DevOps engineer skilled in docker kubernetes linux aws azure. Requires 4 years experience. Familiarity with python and git automation required.",
+    "expected_label": "Low"
+  }
+]
