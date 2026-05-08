@@ -280,6 +280,20 @@ def _render_runtime_status(root: Path) -> None:
     st.sidebar.caption("CLI supports CrewAI-first mode via: python -m src.main --runtime auto --ollama")
 
 
+def _render_quick_mode_guide() -> None:
+    with st.sidebar.expander("Quick Guide: modes and input types", expanded=False):
+        st.markdown("**Input types**")
+        st.markdown("- Sample = demo data")
+        st.markdown("- Manual = typed data")
+        st.markdown("- PDF = document parsing")
+        st.markdown("- JSON = structured machine data")
+
+        st.markdown("**Screening modes**")
+        st.markdown("- Single = 1 CV to 1 job")
+        st.markdown("- Batch = many CVs to 1 job")
+        st.markdown("- Multi-job = CVs and jobs both many side by side")
+
+
 def _resolve_ollama_executable() -> str | None:
     cmd = shutil.which("ollama")
     if cmd:
@@ -539,6 +553,7 @@ def main() -> None:
             "Multi-Job: screen one CV against all available jobs."
         ),
     )
+    _render_quick_mode_guide()
 
     _render_runtime_status(root)
 
