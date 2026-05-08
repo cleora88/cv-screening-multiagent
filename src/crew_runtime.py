@@ -97,11 +97,19 @@ def run_with_crewai(
         llm_spec = f"ollama/{ollama_model}"
 
     payload_str = f"CV: {screening_input.cv_text} ||| JOB: {screening_input.job_text}"
-    logger.log("crewai_run_started", {
-        "candidate_id": screening_input.candidate_id,
-        "job_id": screening_input.job_id,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    })
+    logger.log(
+        "crewai_run_started",
+        {
+            "candidate_id": screening_input.candidate_id,
+            "job_id": screening_input.job_id,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        },
+        agent_name="crewai_runtime",
+        action="start_crewai_workflow",
+        input_summary=f"candidate_id={screening_input.candidate_id}, job_id={screening_input.job_id}",
+        tool_used="CrewAI",
+        status="started",
+    )
 
     dl_tool, skill_tool = _build_tools(settings.model_path_abs)
 
@@ -160,7 +168,15 @@ def run_with_crewai(
         crew_output = crew.kickoff()
         raw = str(crew_output)
     except Exception as exc:
-        logger.log("crewai_run_error", {"error": str(exc), "candidate_id": screening_input.candidate_id})
+        logger.log(
+            "crewai_run_error",
+            {"error": str(exc), "candidate_id": screening_input.candidate_id},
+            agent_name="crewai_runtime",
+            action="execute_crewai_workflow",
+            tool_used="CrewAI",
+            status="failure",
+            error=str(exc),
+        )
         return {
             "success": False,
             "error": str(exc),
@@ -175,5 +191,13 @@ def run_with_crewai(
         "crew_output": raw,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
-    logger.log("crewai_run_completed", result)
+    logger.log(
+        "crewai_run_completed",
+        result,
+        agent_name="crewai_runtime",
+        action="complete_crewai_workflow",
+        output_summary=f"candidate_id={screening_input.candidate_id}, llm_backend={result['llm_backend']}",
+        tool_used="CrewAI",
+        status="success",
+    )
     return result

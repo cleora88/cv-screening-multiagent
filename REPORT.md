@@ -62,7 +62,10 @@ Human review is triggered if:
 - Technical and profile agents strongly disagree
 - Any agent falls back due to failure
 
-In web mode, interactive blocking was disabled to keep presentation flow smooth while still marking review-required cases.
+Strict HITL is available in both CLI and frontend:
+
+- CLI strict mode (`--require-human-approval`) marks pending review when no interactive reviewer is available.
+- Streamlit Single Screening mode includes a blocking reviewer decision step (Approve/Reject/Flag) before final recommendation is finalized.
 
 ## 5. Data and Model
 
@@ -150,7 +153,7 @@ Additional presentation capabilities:
 
 Ollama was integrated as optional local LLM backend for enriched recommendations:
 
-- Endpoint: http://localhost:11434
+- Endpoint: [http://localhost:11434](http://localhost:11434)
 - Default model: llama3.2
 - Added runner script to ensure environment readiness before launch
 
@@ -167,7 +170,7 @@ Project runner script:
 ### 9.1 Automated Tests
 
 - Test framework: pytest
-- Status: all tests passing (12/12)
+- Status: all tests passing (13/13)
 
 ### 9.2 Pipeline Evaluation
 
@@ -180,6 +183,19 @@ Project runner script:
 
 - Runtime logs stored in logs/run_*.jsonl
 - Supports debugging and decision audit trail
+
+Structured logging fields included in each event:
+
+- timestamp
+- agent_name
+- action
+- tool_used
+- input_summary
+- output_summary
+- status
+- error
+- event
+- payload
 
 ## 10. Alignment With Assignment Requirements
 
@@ -208,8 +224,9 @@ Requirement coverage summary:
 
 - Cause: borderline cases triggered terminal prompt in web flow
 - Solution:
-  - Disabled interactive human prompt in web mode
-  - Kept review-required marking without blocking UI
+  - Added strict human approval mode in frontend Single Screening flow
+  - Added explicit reviewer decision capture (Approve/Reject/Flag)
+  - Preserved non-blocking batch/multi-job modes for rapid comparison workflows
 
 ### Challenge 3: Port conflicts during demo startup
 
@@ -222,6 +239,7 @@ Requirement coverage summary:
 - Current model is trained on project dataset and should be further validated on larger real-world data.
 - Skill extraction is keyword-oriented and can miss deeper semantic equivalence.
 - Ollama quality and speed depend on local hardware resources.
+- CrewAI availability depends on using a compatible local runtime (Python 3.11/3.12 recommended).
 
 ## 13. Future Improvements
 
@@ -241,6 +259,12 @@ Requirement coverage summary:
 PowerShell command:
 
 powershell -ExecutionPolicy Bypass -File .\run_project.ps1 -SkipDependencyInstall -Port 8501
+
+Strict HITL CLI command:
+
+```powershell
+.venv312\Scripts\python.exe -m src.main --runtime deterministic --require-human-approval
+```
 
 ## 15. Recommended Word Report Structure
 
@@ -268,4 +292,4 @@ Your classmates can convert this Markdown into a Word report with these sections
 
 ## 17. Conclusion
 
-This project successfully implements a practical AI-assisted CV screening platform that combines multi-agent reasoning, deep learning, explainability, and human governance. It is presentation-ready, test-validated, and aligned with academic project requirements.
+This project successfully implements a practical CV screening platform that combines multi-agent reasoning, deep learning, explainability, and human governance. It is presentation-ready, test-validated, and aligned with academic project requirements.

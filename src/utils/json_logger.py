@@ -13,9 +13,30 @@ class JsonLogger:
         stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         self.log_file = self.log_dir / f"run_{stamp}.jsonl"
 
-    def log(self, event: str, payload: dict[str, Any]) -> None:
+    def log(
+        self,
+        event: str,
+        payload: dict[str, Any],
+        *,
+        agent_name: str | None = None,
+        action: str | None = None,
+        input_summary: str | None = None,
+        output_summary: str | None = None,
+        tool_used: str | None = None,
+        status: str | None = None,
+        error: str | None = None,
+    ) -> None:
+        derived_error = error or payload.get("error")
+        derived_status = status or payload.get("status") or ("failure" if derived_error else "success")
         row = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
+            "agent_name": agent_name or payload.get("agent_name") or "system",
+            "action": action or event,
+            "tool_used": tool_used,
+            "input_summary": input_summary,
+            "output_summary": output_summary,
+            "status": derived_status,
+            "error": derived_error,
             "event": event,
             "payload": payload,
         }

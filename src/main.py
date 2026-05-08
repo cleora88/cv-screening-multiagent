@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from json import JSONDecodeError
 from pathlib import Path
 
 from src.agents.orchestrator import run_screening
@@ -19,10 +20,30 @@ def _load_sample_data(root: Path) -> tuple[dict, dict]:
 
 
 def _load_json_record(path: Path, index: int = 0) -> dict:
+    if not path.exists():
+        raise FileNotFoundError(f"Input file not found: {path}")
+
+    if path.suffix.lower() != ".json":
+        raise ValueError(f"Unsupported input format for {path}. Expected a .json file.")
+
     payload = json.loads(path.read_text(encoding="utf-8"))
     if isinstance(payload, list):
+        if not payload:
+            raise ValueError(f"JSON list is empty in {path}")
+        if index < 0 or index >= len(payload):
+            raise ValueError(
+                f"Index {index} is out of range for {path} (list size={len(payload)})"
+            )
         return payload[index]
+    if not isinstance(payload, dict):
+        raise ValueError(f"JSON payload in {path} must be an object or a list of objects.")
     return payload
+
+
+def _require_fields(record: dict, required: tuple[str, ...], name: str) -> None:
+    missing = [field for field in required if not str(record.get(field, "")).strip()]
+    if missing:
+        raise ValueError(f"{name} is missing required fields: {', '.join(missing)}")
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -41,6 +62,11 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument("--use-crewai", action="store_true", help="Deprecated alias for --runtime crewai.")
+    parser.add_argument(
+        "--require-human-approval",
+        action="store_true",
+        help="Require explicit human approval for HITL checkpoints (flags pending approval when non-interactive).",
+    )
     parser.add_argument("--ollama", action="store_true", help="Enable Ollama LLM rationale enrichment (requires `ollama serve`).")
     parser.add_argument("--ollama-model", type=str, default=None, help="Ollama model name to use (default: from OLLAMA_MODEL env / llama3.2).")
     return parser
@@ -49,11 +75,36 @@ def _build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     root = Path(__file__).resolve().parents[1]
     args = _build_parser().parse_args()
-    if args.cv_file and args.job_file:
-        cv = _load_json_record(args.cv_file, args.cv_index)
-        job = _load_json_record(args.job_file, args.job_index)
-    else:
-        cv, job = _load_sample_data(root)
+    logger = JsonLogger(settings.log_dir_abs)
+    try:
+        if args.cv_file and args.job_file:
+            cv = _load_json_record(args.cv_file, args.cv_index)
+            job = _load_json_record(args.job_file, args.job_index)
+        elif args.cv_file or args.job_file:
+            raise ValueError("Both --cv-file and --job-file must be provided together.")
+        else:
+            cv, job = _load_sample_data(root)
+
+        _require_fields(cv, ("candidate_id", "cv_text"), "CV record")
+        _require_fields(job, ("job_id", "job_text"), "Job record")
+    except (FileNotFoundError, ValueError, JSONDecodeError) as exc:
+        logger.log(
+            "input_validation_error",
+            {
+                "error": str(exc),
+                "cv_file": str(args.cv_file) if args.cv_file else None,
+                "job_file": str(args.job_file) if args.job_file else None,
+            },
+            agent_name="main",
+            action="validate_inputs",
+            tool_used="json_loader",
+            status="failure",
+            error=str(exc),
+        )
+        print(f"[error] {exc}")
+        print("[hint] Provide valid JSON files with required fields: candidate_id, cv_text, job_id, job_text.")
+        print(f"[hint] Validation error logged to: {logger.log_file}")
+        return
 
     screening_input = ScreeningInput(
         candidate_id=cv["candidate_id"],
@@ -61,8 +112,6 @@ def main() -> None:
         job_id=job["job_id"],
         job_text=job["job_text"],
     )
-
-    logger = JsonLogger(settings.log_dir_abs)
 
     ollama_model = args.ollama_model or settings.ollama_model
     ollama_client: OllamaClient | None = None
@@ -87,23 +136,38 @@ def main() -> None:
             print("[info] Runtime=auto -> CrewAI unavailable; using deterministic fallback.")
 
     if use_crewai:
-        result = run_with_crewai(
+        crew_result = run_with_crewai(
             screening_input=screening_input,
             logger=logger,
             ollama_host=settings.ollama_host,
             ollama_model=ollama_model,
         )
-        if not result.get("success", True):
-            print(f"[warning] CrewAI run failed: {result.get('error', 'unknown error')}")
-            print("[warning] Falling back to deterministic runtime.")
-            result = run_screening(
-                screening_input=screening_input,
-                model_path=settings.model_path_abs,
-                low=settings.borderline_low,
-                high=settings.borderline_high,
-                logger=logger,
-                ollama_client=ollama_client,
-            )
+        if not crew_result.get("success", True):
+            print(f"[warning] CrewAI run failed: {crew_result.get('error', 'unknown error')}")
+            print("[warning] Continuing with deterministic orchestrator runtime.")
+
+        # Always run orchestrator scoring/HITL so runtime behavior is consistent
+        # with minimum project requirements even when CrewAI is selected.
+        result = run_screening(
+            screening_input=screening_input,
+            model_path=settings.model_path_abs,
+            low=settings.borderline_low,
+            high=settings.borderline_high,
+            logger=logger,
+            ollama_client=ollama_client,
+            require_human_approval=args.require_human_approval,
+        )
+        if crew_result.get("success", False):
+            result["crewai"] = {
+                "used": True,
+                "llm_backend": crew_result.get("llm_backend"),
+                "crew_output": crew_result.get("crew_output"),
+            }
+        else:
+            result["crewai"] = {
+                "used": False,
+                "error": crew_result.get("error"),
+            }
     else:
         result = run_screening(
             screening_input=screening_input,
@@ -112,6 +176,7 @@ def main() -> None:
             high=settings.borderline_high,
             logger=logger,
             ollama_client=ollama_client,
+            require_human_approval=args.require_human_approval,
         )
 
     print(json.dumps(result, indent=2))

@@ -44,6 +44,32 @@ One-command CrewAI-primary setup on Windows:
 ./setup_crewai_primary.ps1
 ```
 
+## Colab compatibility
+
+This project is compatible with Colab for training and deterministic pipeline execution.
+
+```python
+!python --version
+!pip install -r requirements.txt
+```
+
+Recommended Colab flow:
+
+1. Upload the repository files or mount Google Drive.
+1. Run model training:
+
+```python
+!python -m src.train_baseline
+```
+
+1. Run deterministic pipeline:
+
+```python
+!python -m src.main --runtime deterministic
+```
+
+Note: CrewAI runtime is primarily validated in local Python 3.11/3.12 environments.
+
 ## Run the project
 
 Train the model and generate evaluation artifacts:
@@ -69,12 +95,9 @@ python -m src.main --runtime crewai
 
 # Force deterministic orchestrator
 python -m src.main --runtime deterministic
-```
 
-Run the optional CrewAI orchestration path:
-
-```bash
-python -m src.main --use-crewai
+# Compliance mode: require explicit human approval at HITL checkpoints
+python -m src.main --runtime deterministic --require-human-approval
 ```
 
 Run the pipeline on custom JSON input files:
@@ -94,6 +117,8 @@ Run the web frontend (Streamlit):
 ```bash
 streamlit run src/app_frontend.py
 ```
+
+In Single Screening mode, enable **Require human approval** to force a blocking reviewer decision before final recommendation output.
 
 Recommended demo launcher (Windows PowerShell) that ensures dependencies, starts Ollama, pulls the model if missing, then opens Streamlit:
 
@@ -124,6 +149,23 @@ pytest -q
 - logs/pipeline_evaluation.json: end-to-end pipeline evaluation summary
 - src/app_frontend.py: interactive demo UI for live presentation
 
+## Logging schema
+
+Every JSONL event includes:
+
+- timestamp
+- agent_name
+- action
+- tool_used
+- input_summary
+- output_summary
+- status
+- error
+- event
+- payload
+
+This provides consistent traceability for successful and failed actions.
+
 ## Project structure
 
 ```text
@@ -153,9 +195,33 @@ cv-screening-multiagent/
 
 - System design and architecture: documented in docs/architecture.md
 - DL model integration: PyTorch classifier trained via src.train_baseline.py
-- Working multi-agent system: CrewAI-first runtime with deterministic fallback
+- Working multi-agent system: CrewAI specialist run + orchestrator decision path with deterministic fallback
 - Evaluation and robustness: tests plus batch pipeline evaluation
 - Reproducibility: setup and run commands documented here
+
+## Professor Checklist
+
+- Multi-agent architecture (2 specialists + orchestrator): implemented
+- CrewAI primary with resilient fallback: implemented
+- DL model integrated as a tool in live workflow: implemented
+- DL evaluation with confusion matrix and class metrics: implemented
+- HITL checkpoint requiring explicit approval: implemented in CLI strict mode and Streamlit single-screening strict mode
+- JSONL logging with structured status/action/error fields: implemented
+- Edge-case tests and smoke tests: implemented
+- Reproducible local and Colab-oriented setup: documented
+
+## Submission checklist
+
+- Source repository: present
+- Trained model artifact: `models/cv_fit_model.pt`
+- Report source: `REPORT.md`
+- Slides source: `submission/presentation_slides.md`
+- Report PDF target: `submission/final_report.pdf`
+
+HITL compliance note:
+
+- Use `--require-human-approval` in CLI runs to enforce explicit human approval at checkpoints.
+- If run in non-interactive environments, review status is set to `pending-human-approval` (never auto-approved).
 
 ## CrewAI Primary + LangGraph Stretch Goal
 

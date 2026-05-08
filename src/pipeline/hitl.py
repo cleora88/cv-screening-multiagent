@@ -36,16 +36,16 @@ def human_checkpoint_cli(candidate_id: str, score: float, rationale: str = "", r
     print("  HUMAN REVIEW REQUIRED")
     print(separator)
     print(f"  Candidate : {candidate_id}")
-    print(f"  Score     : {score:.4f}  (borderline — needs your decision)")
+    print(f"  Score     : {score:.4f}  (borderline - needs your decision)")
     if rationale:
         print(f"  Rationale : {rationale}")
     if reasons:
         print(f"  Why now   : {', '.join(reasons)}")
     print(separator)
     print("  Options:")
-    print("    a  — Approve (advance to next stage)")
-    print("    r  — Reject  (exclude from shortlist)")
-    print("    f  — Flag    (needs further manual review)")
+    print("    a  - Approve (advance to next stage)")
+    print("    r  - Reject  (exclude from shortlist)")
+    print("    f  - Flag    (needs further manual review)")
     print(separator)
 
     status_map = {"a": "approved", "r": "rejected", "f": "flagged"}
@@ -61,7 +61,7 @@ def human_checkpoint_cli(candidate_id: str, score: float, rationale: str = "", r
         print(f"  Invalid input '{raw}'. Please enter a, r, or f.")
 
     if not choice:
-        print("  No valid input received — defaulting to 'flagged'.")
+        print("  No valid input received - defaulting to 'flagged'.")
         choice = "f"
 
     reviewer_name = ""
@@ -78,3 +78,29 @@ def human_checkpoint_cli(candidate_id: str, score: float, rationale: str = "", r
         "reasons": reasons or [],
         "timestamp": timestamp,
     }
+
+
+def human_checkpoint(
+    candidate_id: str,
+    score: float,
+    rationale: str = "",
+    reasons: list[str] | None = None,
+    require_human_approval: bool = False,
+) -> dict:
+    """Return a human checkpoint decision.
+
+    When `require_human_approval` is true and no interactive terminal is available,
+    the decision is left pending to enforce explicit human validation.
+    """
+    if require_human_approval and not sys.stdin.isatty():
+        return {
+            "candidate_id": candidate_id,
+            "score": round(score, 4),
+            "status": "pending-human-approval",
+            "reviewer": "unassigned",
+            "reason": "human approval required but no interactive reviewer is available",
+            "reasons": reasons or [],
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+    return human_checkpoint_cli(candidate_id, score, rationale, reasons)

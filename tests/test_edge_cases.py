@@ -3,11 +3,12 @@ from pathlib import Path
 
 import pytest
 
+from src.pipeline.hitl import human_checkpoint
 from src.tools.model_tool import run_model_tool
 from src.tools.skill_extractor_tool import extract_skills
 
 
-MODEL_PATH = Path("models/cv_fit_net.pt")
+MODEL_PATH = Path("models/cv_fit_model.pt")
 
 
 class TestModelToolEdgeCases:
@@ -65,3 +66,22 @@ class TestSkillExtractorEdgeCases:
     def test_numeric_only_input(self):
         result = extract_skills("12345", "67890")
         assert result.coverage == 0.0
+
+
+class TestHitlStrictMode:
+    def test_pending_when_human_required_and_noninteractive(self, monkeypatch):
+        class _FakeStdin:
+            @staticmethod
+            def isatty() -> bool:
+                return False
+
+        monkeypatch.setattr("sys.stdin", _FakeStdin())
+        result = human_checkpoint(
+            candidate_id="cand_noninteractive",
+            score=0.5,
+            rationale="borderline",
+            reasons=["borderline final score"],
+            require_human_approval=True,
+        )
+
+        assert result["status"] == "pending-human-approval"

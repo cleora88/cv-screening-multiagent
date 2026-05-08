@@ -187,7 +187,10 @@ def _load_all_cvs(root: Path) -> list[dict]:
 def _load_json_from_upload(uploaded_file) -> list[dict] | dict | None:
     if uploaded_file is None:
         return None
-    payload = json.loads(uploaded_file.getvalue().decode("utf-8"))
+    try:
+        payload = json.loads(uploaded_file.getvalue().decode("utf-8"))
+    except Exception:
+        return None
     return payload
 
 
@@ -353,6 +356,7 @@ def _run_one(
     job_id: str,
     logger: JsonLogger,
     ollama_client: OllamaClient | None,
+    require_human_approval: bool = False,
 ) -> dict[str, Any]:
     payload = ScreeningInput(
         candidate_id=candidate_id.strip(),
@@ -368,7 +372,51 @@ def _run_one(
         logger=logger,
         ollama_client=ollama_client,
         interactive_human_review=False,
+        require_human_approval=require_human_approval,
     )
+
+
+def _apply_manual_human_decision(
+    result: dict[str, Any],
+    logger: JsonLogger,
+    decision: str,
+    reviewer: str,
+) -> dict[str, Any]:
+    status_map = {
+        "Approve": "approved",
+        "Reject": "rejected",
+        "Flag": "flagged",
+    }
+    recommendation_map = {
+        "approved": "shortlist",
+        "rejected": "reject",
+        "flagged": "review",
+    }
+
+    status = status_map[decision]
+    manual_review = {
+        "candidate_id": result.get("candidate_id"),
+        "score": result.get("final_score"),
+        "status": status,
+        "reviewer": reviewer.strip() or "anonymous",
+        "reason": "manual approval captured in Streamlit",
+        "reasons": (result.get("human_review") or {}).get("reasons", result.get("review_reasons", [])),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    result["human_review"] = manual_review
+    result["recommendation"] = recommendation_map[status]
+
+    logger.log(
+        "human_checkpoint",
+        manual_review,
+        agent_name="human_reviewer",
+        action="manual_review_submission",
+        input_summary=f"candidate_id={result.get('candidate_id')}, decision={decision}",
+        output_summary=f"status={status}, recommendation={result['recommendation']}",
+        tool_used="streamlit_human_review",
+        status="success",
+    )
+    return result
 
 
 # ── Result rendering ─────────────────────────────────────────────────────────
@@ -534,6 +582,13 @@ def main() -> None:
     st.sidebar.divider()
     st.sidebar.subheader("Options")
     show_explain = st.sidebar.toggle("Show explainability highlights", value=True, key="sidebar_explain_toggle")
+    require_human_approval = st.sidebar.toggle(
+        "Require human approval",
+        value=True,
+        help="When enabled, flagged decisions require explicit reviewer confirmation before final output is shown in single-screening mode.",
+    )
+    if require_human_approval and app_mode != "Single Screening":
+        st.sidebar.caption("Strict blocking approval is applied in Single Screening mode. Batch and Multi-Job modes mark pending review.")
 
     # ── Session history (shared across all modes) ─────────────────────────────
     if "history" not in st.session_state:
@@ -563,6 +618,8 @@ def main() -> None:
             if pdf_file:
                 cv_text_override = _extract_pdf_text(pdf_file.getvalue())
             loaded_job = _load_json_from_upload(job_file_json)
+            if job_file_json is not None and loaded_job is None:
+                st.sidebar.error("Invalid Job JSON format.")
             if loaded_job:
                 job_record = loaded_job if isinstance(loaded_job, dict) else loaded_job[0]
         elif source == "Upload JSON":
@@ -570,6 +627,10 @@ def main() -> None:
             job_file_json = st.sidebar.file_uploader("Upload Job JSON", type=["json"])
             loaded_cv = _load_json_from_upload(cv_file_json)
             loaded_job = _load_json_from_upload(job_file_json)
+            if cv_file_json is not None and loaded_cv is None:
+                st.sidebar.error("Invalid CV JSON format.")
+            if job_file_json is not None and loaded_job is None:
+                st.sidebar.error("Invalid Job JSON format.")
             if loaded_cv:
                 cv_record = loaded_cv if isinstance(loaded_cv, dict) else loaded_cv[0]
             if loaded_job:
@@ -598,7 +659,36 @@ def main() -> None:
             return
 
         with st.spinner("Running agents" + (" + Ollama..." if ollama_client else "...")):
-            result = _run_one(cv_text, job_text, candidate_id, job_id, logger, ollama_client)
+            result = _run_one(
+                cv_text,
+                job_text,
+                candidate_id,
+                job_id,
+                logger,
+                ollama_client,
+                require_human_approval=require_human_approval,
+            )
+
+        review = result.get("human_review") or {}
+        review_status = review.get("status")
+        if require_human_approval and review_status == "pending-human-approval":
+            st.warning("Human approval is required before final recommendation can be finalized.")
+            decision = st.radio(
+                "Reviewer decision",
+                ["Approve", "Reject", "Flag"],
+                horizontal=True,
+                key=f"decision_{candidate_id}_{job_id}",
+            )
+            reviewer = st.text_input(
+                "Reviewer name",
+                value="",
+                key=f"reviewer_{candidate_id}_{job_id}",
+            )
+            if not st.button("Confirm Human Decision", type="primary", use_container_width=True):
+                st.info("Confirm a reviewer decision to continue.")
+                st.stop()
+
+            result = _apply_manual_human_decision(result, logger, decision, reviewer)
 
         st.session_state["history"].insert(0, {
             "ts": datetime.now(timezone.utc).strftime("%H:%M:%S"),
@@ -654,6 +744,8 @@ def main() -> None:
                     cvs = loaded
                 elif isinstance(loaded, dict):
                     cvs = [loaded]
+                else:
+                    st.error("Invalid CV list JSON format.")
 
         st.markdown(f"**{len(cvs)} CV(s) loaded.**")
 
@@ -681,7 +773,9 @@ def main() -> None:
                 job_id=selected_job_id,
                 logger=logger,
                 ollama_client=ollama_client,
+                require_human_approval=require_human_approval,
             )
+            r["_cv_text"] = cv.get("cv_text", "")
             batch_results.append(r)
             st.session_state["history"].insert(0, {
                 "ts": datetime.now(timezone.utc).strftime("%H:%M:%S"),
@@ -771,6 +865,8 @@ def main() -> None:
                 cv_record = loaded if isinstance(loaded, dict) else loaded[0]
                 cv_text = cv_record.get("cv_text", cv_text)
                 candidate_id = cv_record.get("candidate_id", candidate_id)
+            elif cv_file_json is not None:
+                st.error("Invalid CV JSON format.")
             candidate_id = st.text_input("Candidate ID", value=candidate_id)
             cv_text = st.text_area("Candidate CV", value=cv_text, height=200)
         else:
@@ -800,6 +896,7 @@ def main() -> None:
                 job_id=job["job_id"],
                 logger=logger,
                 ollama_client=ollama_client,
+                require_human_approval=require_human_approval,
             )
             r["_job_text"] = job["job_text"]
             mj_results.append(r)

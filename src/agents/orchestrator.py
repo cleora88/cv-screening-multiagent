@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 from src.agents.profile_analyzer import profile_match
 from src.agents.schemas import ScreeningInput
 from src.agents.technical_matcher import technical_match
-from src.pipeline.hitl import human_checkpoint_cli, needs_human_review
+from src.pipeline.hitl import human_checkpoint, needs_human_review
 
 if TYPE_CHECKING:
     from src.llm_client import OllamaClient
@@ -20,14 +20,43 @@ def run_screening(
     logger,
     ollama_client: "OllamaClient | None" = None,
     interactive_human_review: bool = True,
+    require_human_approval: bool = False,
 ) -> dict[str, Any]:
-    logger.log("screening_started", {"candidate_id": screening_input.candidate_id, "job_id": screening_input.job_id})
+    logger.log(
+        "screening_started",
+        {"candidate_id": screening_input.candidate_id, "job_id": screening_input.job_id},
+        agent_name="orchestrator",
+        action="start_screening",
+        input_summary=f"candidate_id={screening_input.candidate_id}, job_id={screening_input.job_id}",
+        tool_used="technical_matcher,profile_analyzer",
+        status="started",
+    )
 
     tech = technical_match(screening_input, model_path)
-    logger.log("agent_result", asdict(tech))
+    logger.log(
+        "agent_result",
+        asdict(tech),
+        agent_name=tech.agent_name,
+        action="produce_assessment",
+        input_summary="cv_text + job_text",
+        output_summary=f"label={tech.label}, score={tech.score:.4f}, recommendation={tech.recommendation}",
+        tool_used="model_tool,skill_extractor_tool",
+        status="success" if tech.success else "failure",
+        error=tech.error,
+    )
 
     profile = profile_match(screening_input)
-    logger.log("agent_result", asdict(profile))
+    logger.log(
+        "agent_result",
+        asdict(profile),
+        agent_name=profile.agent_name,
+        action="produce_assessment",
+        input_summary="cv_text + job_text",
+        output_summary=f"label={profile.label}, score={profile.score:.4f}, recommendation={profile.recommendation}",
+        tool_used="heuristic_profile_rules",
+        status="success" if profile.success else "failure",
+        error=profile.error,
+    )
 
     score = (tech.score * 0.65) + (profile.score * 0.35)
     label = "High" if score >= 0.67 else "Medium" if score >= 0.45 else "Low"
@@ -45,18 +74,44 @@ def run_screening(
     if needs_human_review(score, low, high, disagreement=disagreement, agent_failure=(not tech.success or not profile.success)):
         rationale = f"Tech: {tech.rationale} | Profile: {profile.rationale}"
         if interactive_human_review:
-            review = human_checkpoint_cli(screening_input.candidate_id, score, rationale, review_reasons)
+            review = human_checkpoint(
+                screening_input.candidate_id,
+                score,
+                rationale,
+                review_reasons,
+                require_human_approval=require_human_approval,
+            )
         else:
-            review = {
-                "candidate_id": screening_input.candidate_id,
-                "score": round(score, 4),
-                "status": "auto-flagged",
-                "reviewer": "system",
-                "reason": "interactive review disabled",
-                "reasons": review_reasons,
-                "timestamp": None,
-            }
-        logger.log("human_checkpoint", review)
+            if require_human_approval:
+                review = {
+                    "candidate_id": screening_input.candidate_id,
+                    "score": round(score, 4),
+                    "status": "pending-human-approval",
+                    "reviewer": "unassigned",
+                    "reason": "interactive review disabled while human approval is required",
+                    "reasons": review_reasons,
+                    "timestamp": None,
+                }
+            else:
+                review = {
+                    "candidate_id": screening_input.candidate_id,
+                    "score": round(score, 4),
+                    "status": "auto-flagged",
+                    "reviewer": "system",
+                    "reason": "interactive review disabled",
+                    "reasons": review_reasons,
+                    "timestamp": None,
+                }
+        logger.log(
+            "human_checkpoint",
+            review,
+            agent_name="orchestrator",
+            action="request_human_decision",
+            input_summary=f"score={score:.4f}, disagreement={disagreement:.4f}, reasons={review_reasons}",
+            output_summary=f"status={review.get('status')}, reviewer={review.get('reviewer')}",
+            tool_used="human_checkpoint",
+            status="success",
+        )
         if review["status"] == "approved":
             recommendation = "shortlist"
         elif review["status"] == "rejected":
@@ -75,14 +130,31 @@ def run_screening(
                 tech_rationale=tech.rationale,
                 profile_rationale=profile.rationale,
             )
-            logger.log("llm_rationale", {
-                "candidate_id": screening_input.candidate_id,
-                "model": ollama_client.model,
-                "rationale": llm_rationale,
-            })
+            logger.log(
+                "llm_rationale",
+                {
+                    "candidate_id": screening_input.candidate_id,
+                    "model": ollama_client.model,
+                    "rationale": llm_rationale,
+                },
+                agent_name="orchestrator",
+                action="generate_llm_rationale",
+                input_summary=f"candidate_id={screening_input.candidate_id}, model={ollama_client.model}",
+                output_summary="short hiring rationale generated",
+                tool_used="ollama_generate",
+                status="success",
+            )
         except RuntimeError as exc:
             llm_rationale = f"[Ollama unavailable: {exc}]"
-            logger.log("llm_rationale_error", {"error": str(exc)})
+            logger.log(
+                "llm_rationale_error",
+                {"error": str(exc)},
+                agent_name="orchestrator",
+                action="generate_llm_rationale",
+                tool_used="ollama_generate",
+                status="failure",
+                error=str(exc),
+            )
 
     final = {
         "candidate_id": screening_input.candidate_id,
@@ -100,12 +172,28 @@ def run_screening(
         "profile": asdict(profile),
         "human_review": review,
     }
-    logger.log("orchestrator_decision", {
-        "candidate_id": screening_input.candidate_id,
-        "final_score": round(score, 4),
-        "final_label": label,
-        "recommendation": recommendation,
-        "review_reasons": review_reasons,
-    })
-    logger.log("screening_completed", final)
+    logger.log(
+        "orchestrator_decision",
+        {
+            "candidate_id": screening_input.candidate_id,
+            "final_score": round(score, 4),
+            "final_label": label,
+            "recommendation": recommendation,
+            "review_reasons": review_reasons,
+        },
+        agent_name="orchestrator",
+        action="final_decision",
+        input_summary=f"tech_score={tech.score:.4f}, profile_score={profile.score:.4f}",
+        output_summary=f"final_label={label}, recommendation={recommendation}",
+        tool_used="decision_policy",
+        status="success",
+    )
+    logger.log(
+        "screening_completed",
+        final,
+        agent_name="orchestrator",
+        action="complete_screening",
+        output_summary=f"candidate_id={screening_input.candidate_id}, final_label={label}",
+        status="success",
+    )
     return final
