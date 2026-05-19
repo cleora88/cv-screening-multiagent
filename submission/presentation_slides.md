@@ -3,20 +3,21 @@
 ## 1. Problem and Motivation
 
 - Manual CV screening is slow and inconsistent.
-- Goal: improve consistency and traceability with specialist agents and human governance.
+- Use case: Junior Data Analyst hiring shortlist.
+- Goal: help HR screen one or many CVs against the same job while keeping human control for uncertain decisions.
 
 ## 2. Why Multi-Agent
 
-- Technical Matcher focuses on hard-skill fit.
-- Profile Analyzer focuses on seniority and role-fit signals.
-- Orchestrator combines evidence and enforces policy.
+- Technical Matcher checks hard skills such as Python, SQL, pandas, Excel, and reporting.
+- Profile Analyzer checks experience, education, teamwork, communication, and project evidence.
+- Orchestrator combines both views and decides shortlist/review/reject.
 
 ## 3. Architecture
 
-- Inputs: CV text + Job text.
+- Inputs: CV text/PDF + Junior Data Analyst job description.
 - Tool 1: PyTorch model tool for fit signal.
 - Tool 2: Skill extractor for coverage and gaps.
-- Orchestrator computes final score and recommendation.
+- Frontend modes: Single Screening and Batch Screening.
 
 ## 4. Deep Learning Model
 
@@ -26,16 +27,18 @@
 
 ## 5. Workflow (End-to-End)
 
-1. Ingest CV and job.
-2. Technical and profile agents produce outputs.
-3. Orchestrator applies weighted decision logic.
-4. HITL checkpoint triggered for borderline/conflict/failure cases.
-5. Final output + JSONL logs.
+1. HR enters/selects the job description.
+2. HR provides one CV or uploads multiple CVs/PDFs.
+3. Technical and profile agents produce outputs.
+4. Orchestrator applies weighted decision logic.
+5. HITL checkpoint triggered for borderline/conflict/failure cases.
+6. Final output + JSONL logs.
 
 ## 6. Human-in-the-Loop
 
 - Strict mode requires explicit reviewer decision.
 - Streamlit single-screening blocks until reviewer confirms Shortlist/Reject/Needs Review.
+- Batch mode flags uncertain candidates for HR review in the leaderboard.
 
 ## 7. Guardrails and Error Handling
 
@@ -50,11 +53,12 @@
 
 ## 9. Evaluation and Robustness
 
-- Automated tests for smoke + edge cases.
+- 16 automated tests for smoke, edge cases, batch screening, and frontend batch helpers.
 - Pipeline evaluation on labeled cases with accuracy and confusion matrix.
+- Final pipeline evaluation accuracy: 0.8333.
 
 ## 10. Limitations and Next Steps
 
 - Expand dataset realism and scale.
 - Add semantic skill matching and fairness diagnostics.
-- Extend strict HITL to batch-level review workflows.
+- Add a richer batch-level reviewer workflow.
