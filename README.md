@@ -1,28 +1,32 @@
 # CV Screening Multi-Agent System
 
-Multi-agent AI project for the UIR Integrated Project brief. The domain is CV screening: specialized agents collaborate to assess how well a candidate CV matches a job description, while a human reviewer remains in control for borderline or conflicted cases.
+This is our UIR Integrated Project implementation for a simple HR screening use case: shortlisting candidates for a Junior Data Analyst role.
 
-## What this project demonstrates
+The app lets a recruiter screen one CV, or several CVs at once, against the same job description. Each candidate is analyzed separately, then the system returns a recommendation: `shortlist`, `review`, or `reject`. Borderline or conflicting cases are not treated as final decisions; they are sent to a human review step.
 
-- 2 specialist agents and 1 orchestrator
-- PyTorch model integrated as a real tool in the screening loop
-- 2 tools with clear inputs and outputs
-- Human-in-the-loop checkpoint for borderline or conflicting decisions
-- JSON logging for traceability
-- Batch evaluation and edge-case tests for robustness
+## Main requirements covered
+
+- Two specialist agents plus one orchestrator
+- A trained PyTorch model used as a real scoring tool
+- A second tool for skill extraction and skill-gap analysis
+- Human review for uncertain decisions
+- JSON logs for traceability
+- Tests and evaluation outputs for robustness
 
 ## Agent design
 
 1. Technical Matcher
-   - Uses the DL model tool and skill extractor.
-   - Produces hard-skill fit, matched skills, and missing requirements.
+   - Checks the technical match between the CV and the job.
+   - Uses the PyTorch model and the skill extractor.
+   - Reports matched skills and skills not found in the CV.
 
 2. Profile Analyzer
-   - Scores seniority, years of experience, project ownership, communication, and education signals.
+   - Looks at experience, education, project work, teamwork, and communication signals.
 
 3. Orchestrator
-   - Combines both specialist assessments.
-   - Detects disagreement and triggers human review when needed.
+   - Combines the two agent outputs.
+   - Gives the final recommendation.
+   - Sends uncertain cases to HR review.
 
 See the architecture note in docs/architecture.md.
 
