@@ -32,7 +32,7 @@ def main() -> None:
         from reportlab.pdfgen import canvas
     except Exception as exc:  # pragma: no cover
         raise SystemExit(
-            "reportlab is required to export PDF. Install with: python -m pip install reportlab"
+            "reportlab is required to export PDF. Install dependencies with: python -m pip install -r requirements.txt"
         ) from exc
 
     lines = report_md.read_text(encoding="utf-8").splitlines()

@@ -80,5 +80,11 @@ if ($LASTEXITCODE -ne 0) {
     & $ollamaCmd pull $OllamaModel
 }
 
+Write-Host "Running demo preflight checks..." -ForegroundColor Cyan
+& $PythonExe -m src.preflight_demo --ollama-host "http://localhost:11434" --ollama-model $OllamaModel
+if ($LASTEXITCODE -ne 0) {
+    throw "Preflight checks failed. Fix the reported FAIL items before launching the app."
+}
+
 Write-Host "Launching Streamlit on port $Port..." -ForegroundColor Green
 & $PythonExe -m streamlit run src/app_frontend.py --server.port $Port

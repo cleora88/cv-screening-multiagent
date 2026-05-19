@@ -10,6 +10,7 @@ from src.agents.schemas import ScreeningInput
 from src.crew_runtime import is_crewai_available, run_with_crewai
 from src.config import settings
 from src.llm_client import OllamaClient
+from src.pipeline.batch import run_batch_screening
 from src.utils.json_logger import JsonLogger
 
 
@@ -40,6 +41,25 @@ def _load_json_record(path: Path, index: int = 0) -> dict:
     return payload
 
 
+def _load_json_records(path: Path) -> list[dict]:
+    if not path.exists():
+        raise FileNotFoundError(f"Input file not found: {path}")
+
+    if path.suffix.lower() != ".json":
+        raise ValueError(f"Unsupported input format for {path}. Expected a .json file.")
+
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if isinstance(payload, list):
+        if not payload:
+            raise ValueError(f"JSON list is empty in {path}")
+        if not all(isinstance(item, dict) for item in payload):
+            raise ValueError(f"Every CV record in {path} must be a JSON object.")
+        return payload
+    if isinstance(payload, dict):
+        return [payload]
+    raise ValueError(f"JSON payload in {path} must be an object or a list of objects.")
+
+
 def _require_fields(record: dict, required: tuple[str, ...], name: str) -> None:
     missing = [field for field in required if not str(record.get(field, "")).strip()]
     if missing:
@@ -52,6 +72,11 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--job-file", type=Path, help="Path to a JSON file containing one job record or a list of job records.")
     parser.add_argument("--cv-index", type=int, default=0, help="Index to use when the CV JSON file contains a list.")
     parser.add_argument("--job-index", type=int, default=0, help="Index to use when the job JSON file contains a list.")
+    parser.add_argument(
+        "--batch-screening",
+        action="store_true",
+        help="Screen every CV in --cv-file against one selected job from --job-file.",
+    )
     parser.add_argument(
         "--runtime",
         choices=["auto", "crewai", "deterministic"],
@@ -78,14 +103,21 @@ def main() -> None:
     logger = JsonLogger(settings.log_dir_abs)
     try:
         if args.cv_file and args.job_file:
-            cv = _load_json_record(args.cv_file, args.cv_index)
+            cv_records = _load_json_records(args.cv_file) if args.batch_screening else None
+            cv = cv_records[0] if cv_records else _load_json_record(args.cv_file, args.cv_index)
             job = _load_json_record(args.job_file, args.job_index)
         elif args.cv_file or args.job_file:
             raise ValueError("Both --cv-file and --job-file must be provided together.")
         else:
             cv, job = _load_sample_data(root)
+            cv_records = [cv] if args.batch_screening else None
 
-        _require_fields(cv, ("candidate_id", "cv_text"), "CV record")
+        if args.batch_screening:
+            assert cv_records is not None
+            for index, cv_record in enumerate(cv_records, start=1):
+                _require_fields(cv_record, ("candidate_id", "cv_text"), f"CV record #{index}")
+        else:
+            _require_fields(cv, ("candidate_id", "cv_text"), "CV record")
         _require_fields(job, ("job_id", "job_text"), "Job record")
     except (FileNotFoundError, ValueError, JSONDecodeError) as exc:
         logger.log(
@@ -135,7 +167,55 @@ def main() -> None:
         else:
             print("[info] Runtime=auto -> CrewAI unavailable; using deterministic fallback.")
 
+    # Requirement alignment: CrewAI runs must use an explicit LLM backend.
+    # We enforce Ollama availability for CrewAI and only continue when reachable.
     if use_crewai:
+        crew_llm_client = OllamaClient(host=settings.ollama_host, model=ollama_model)
+        if not crew_llm_client.is_available():
+            if runtime == "crewai":
+                message = (
+                    f"CrewAI runtime requires Ollama backend, but Ollama is not reachable at "
+                    f"{settings.ollama_host}. Start Ollama with 'ollama serve' and retry."
+                )
+                logger.log(
+                    "runtime_backend_error",
+                    {
+                        "error": message,
+                        "runtime": runtime,
+                        "ollama_host": settings.ollama_host,
+                        "ollama_model": ollama_model,
+                    },
+                    agent_name="main",
+                    action="select_runtime",
+                    tool_used="ollama_backend_check",
+                    status="failure",
+                    error=message,
+                )
+                print(f"[error] {message}")
+                print(f"[hint] Runtime backend error logged to: {logger.log_file}")
+                return
+            print(
+                f"[warning] CrewAI selected but Ollama is unreachable at {settings.ollama_host}; "
+                "falling back to deterministic runtime."
+            )
+            use_crewai = False
+        else:
+            print(f"[info] CrewAI backend enforced: Ollama model '{ollama_model}' @ {settings.ollama_host}")
+
+    if args.batch_screening:
+        if use_crewai:
+            print("[info] Batch screening uses the deterministic orchestrator loop; each CV still runs the two specialist agents, tools, HITL checkpoint, and JSON logging.")
+        result = run_batch_screening(
+            cv_records=cv_records or [cv],
+            job_record=job,
+            model_path=settings.model_path_abs,
+            low=settings.borderline_low,
+            high=settings.borderline_high,
+            logger=logger,
+            ollama_client=ollama_client,
+            require_human_approval=args.require_human_approval,
+        )
+    elif use_crewai:
         crew_result = run_with_crewai(
             screening_input=screening_input,
             logger=logger,

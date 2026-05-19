@@ -100,11 +100,25 @@ python -m src.main --runtime deterministic
 python -m src.main --runtime deterministic --require-human-approval
 ```
 
+CrewAI backend policy:
+
+- CrewAI runs enforce an Ollama LLM backend.
+- `--runtime crewai` fails fast when Ollama is unreachable.
+- `--runtime auto` falls back to deterministic runtime when CrewAI/Ollama is unavailable.
+
 Run the pipeline on custom JSON input files:
 
 ```bash
 python -m src.main --cv-file data/sample_cvs.json --job-file data/sample_jobs.json
 ```
+
+Run the simplified HR workflow for one role and one or many CVs:
+
+```bash
+python -m src.main --batch-screening --cv-file data/sample_cvs.json --job-file data/sample_jobs.json
+```
+
+This screens every CV record against the selected job description, ranks the candidates, keeps the same Technical Matcher + Profile Analyzer + Orchestrator flow for each candidate, and writes JSONL audit logs.
 
 Run batch evaluation on labeled CV screening cases:
 
@@ -118,7 +132,7 @@ Run the web frontend (Streamlit):
 streamlit run src/app_frontend.py
 ```
 
-In Single Screening mode, enable **Require human approval** to force a blocking reviewer decision before final recommendation output.
+Use **Single Screening** for one CV and **Batch Screening** for many CVs against the same Junior Data Analyst job description. In Single Screening mode, enable **Require human approval** to force a blocking reviewer decision before final recommendation output; in Batch Screening, flagged cases are marked for HR review in the ranked table and audit log.
 
 Recommended demo launcher (Windows PowerShell) that ensures dependencies, starts Ollama, pulls the model if missing, then opens Streamlit:
 
@@ -132,12 +146,18 @@ Optional flags:
 ./run_project.ps1 -Port 8502 -OllamaModel llama3.2 -SkipDependencyInstall
 ```
 
-The frontend includes a "Download Run Report (JSON)" button to export each screening result for demo or submission evidence.
+The frontend includes JSON/CSV download buttons for single and batch screening results.
 
 Run tests:
 
 ```bash
 pytest -q
+```
+
+Demo preflight (single command PASS/FAIL check for CrewAI + Ollama runtime readiness):
+
+```bash
+python -m src.preflight_demo
 ```
 
 ## Output artifacts
@@ -177,7 +197,7 @@ cv-screening-multiagent/
    src/
       agents/             # Technical agent, profile agent, orchestrator
       data/               # Dataset generation and shared featurization
-      pipeline/           # Human-in-the-loop checkpoint logic
+      pipeline/           # Scoring, batch screening, and HITL checkpoint logic
       tools/              # DL model and skill extraction tools
       utils/              # Shared utilities (JSON logger)
       evaluate_pipeline.py
@@ -221,7 +241,8 @@ cv-screening-multiagent/
 HITL compliance note:
 
 - Use `--require-human-approval` in CLI runs to enforce explicit human approval at checkpoints.
-- If run in non-interactive environments, review status is set to `pending-human-approval` (never auto-approved).
+- In strict mode, non-interactive checkpoints are set to `pending-human-approval`.
+- In non-strict automated runs, uncertain cases are auto-flagged for review, never auto-approved.
 
 ## CrewAI Primary + LangGraph Stretch Goal
 

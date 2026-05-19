@@ -35,7 +35,7 @@
 ## 6. Human-in-the-Loop
 
 - Strict mode requires explicit reviewer decision.
-- Streamlit single-screening blocks until reviewer confirms Approve/Reject/Flag.
+- Streamlit single-screening blocks until reviewer confirms Shortlist/Reject/Needs Review.
 
 ## 7. Guardrails and Error Handling
 

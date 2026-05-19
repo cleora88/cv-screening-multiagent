@@ -18,7 +18,8 @@ TECH_KEYWORDS = [
     "python", "pytorch", "machine", "learning", "sql", "docker",
     "kubernetes", "javascript", "react", "nlp", "deep", "aws",
     "azure", "tensorflow", "pandas", "numpy", "fastapi", "flask",
-    "mongodb", "redis", "git", "linux",
+    "mongodb", "redis", "git", "linux", "excel", "tableau",
+    "power", "bi", "reporting", "statistics",
 ]
 
 SKILL_PATTERNS = {
@@ -43,6 +44,11 @@ SKILL_PATTERNS = {
     "redis": ("redis",),
     "git": ("git",),
     "linux": ("linux",),
+    "excel": ("excel", "spreadsheets"),
+    "tableau": ("tableau",),
+    "power bi": ("power bi", "powerbi"),
+    "reporting": ("reporting", "dashboard", "dashboards", "reports"),
+    "statistics": ("statistics", "statistical analysis"),
 }
 
 COMMUNICATION_SIGNALS = ["team", "communication", "stakeholder", "collaboration", "client"]

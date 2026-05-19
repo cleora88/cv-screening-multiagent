@@ -50,7 +50,8 @@ This project implements an open-domain multi-agent AI system for CV screening. T
 
 ## Demo path
 
-1. Train the model.
-2. Run one candidate through the pipeline.
-3. Run batch evaluation on labeled cases.
-4. Show JSON logs and explain a human-review example.
+1. Run Single Screening for one CV against the Junior Data Analyst role.
+2. Trigger the HR Review Gate on a borderline/conflicting case.
+3. Run Batch Screening for multiple CVs against the same role.
+4. Export JSON/CSV reports and show JSONL audit logs.
+5. Run batch evaluation on labeled cases.

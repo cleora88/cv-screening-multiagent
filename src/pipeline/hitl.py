@@ -3,6 +3,8 @@ from __future__ import annotations
 import sys
 from datetime import datetime, timezone
 
+from src.pipeline.scoring import DISAGREEMENT_REVIEW_THRESHOLD
+
 
 def needs_human_review(
     score: float,
@@ -11,13 +13,13 @@ def needs_human_review(
     disagreement: float = 0.0,
     agent_failure: bool = False,
 ) -> bool:
-    return low <= score <= high or disagreement >= 0.25 or agent_failure
+    return low <= score <= high or disagreement >= DISAGREEMENT_REVIEW_THRESHOLD or agent_failure
 
 
 def human_checkpoint_cli(candidate_id: str, score: float, rationale: str = "", reasons: list[str] | None = None) -> dict:
     """
     Prompt the human reviewer for a borderline candidate.
-    Falls back to auto-approve when stdin is not a TTY (e.g. CI/batch).
+    Falls back to review/flag when stdin is not a TTY (e.g. CI/batch).
     """
     timestamp = datetime.now(timezone.utc).isoformat()
 
@@ -25,9 +27,10 @@ def human_checkpoint_cli(candidate_id: str, score: float, rationale: str = "", r
         return {
             "candidate_id": candidate_id,
             "score": round(score, 4),
-            "status": "auto-approved",
+            "status": "auto-flagged",
             "reviewer": "system",
             "reason": "non-interactive environment",
+            "reasons": reasons or [],
             "timestamp": timestamp,
         }
 

@@ -1,22 +1,6 @@
 [
   {
-    "job_id": "job_ml_engineer_001",
-    "job_text": "Looking for machine learning engineer with python pytorch sql and cloud experience. Must have project ownership and teamwork skills."
-  },
-  {
-    "job_id": "job_data_scientist_002",
-    "job_text": "Data scientist role requiring python pandas scikit-learn statistics and communication skills. Bachelor or master degree preferred. 2+ years experience."
-  },
-  {
-    "job_id": "job_backend_engineer_003",
-    "job_text": "Backend software engineer with python fastapi sql docker kubernetes. 3+ years experience in building microservices and leading delivery teams."
-  },
-  {
-    "job_id": "job_nlp_researcher_004",
-    "job_text": "NLP researcher with python transformers pytorch huggingface and academic publication record. PhD or equivalent experience in deep learning and language models."
-  },
-  {
-    "job_id": "job_data_engineer_005",
-    "job_text": "Data engineer skilled in python spark sql airflow cloud pipelines. Strong project ownership and stakeholder communication required."
+    "job_id": "job_junior_data_analyst_001",
+    "job_text": "Junior Data Analyst role requiring Python, SQL, pandas, Excel and reporting dashboards. Candidate should have 1+ years experience or internship experience, a bachelor degree, teamwork, communication and stakeholder collaboration."
   }
 ]

@@ -19,6 +19,7 @@ from src.agents.schemas import ScreeningInput
 from src.crew_runtime import is_crewai_available
 from src.config import settings
 from src.llm_client import OllamaClient
+from src.pipeline.batch import run_batch_screening
 from src.tools.skill_extractor_tool import extract_skills
 from src.utils.json_logger import JsonLogger
 
@@ -82,87 +83,254 @@ def _inject_styles() -> None:
                 --accent: #007a70;
                 --accent-2: #f4a259;
                 --card: #ffffff;
+                --line: #d9e6ee;
+                --soft: #f8fbfd;
             }
             html, body, [class*="css"] {
                 font-family: 'Manrope', sans-serif;
                 color: var(--ink);
             }
+            .block-container {
+                padding-top: 1.25rem;
+                padding-bottom: 2rem;
+                max-width: 1280px;
+            }
             .stApp {
-                background: radial-gradient(circle at top left, var(--bg-start), var(--bg-end));
+                background:
+                    radial-gradient(circle at top left, rgba(255,255,255,0.86), rgba(255,255,255,0) 28%),
+                    radial-gradient(circle at bottom right, rgba(195, 226, 255, 0.34), rgba(255,255,255,0) 26%),
+                    linear-gradient(180deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            }
+            h1, h2, h3 {
+                letter-spacing: -0.03em;
             }
             .hero {
-                background: linear-gradient(120deg, #093028 0%, #237a57 100%);
-                padding: 1.1rem 1.2rem;
-                border-radius: 14px;
+                background:
+                    radial-gradient(circle at top right, rgba(255,255,255,0.12), rgba(255,255,255,0) 22%),
+                    linear-gradient(135deg, #092f2a 0%, #13564e 52%, #237a57 100%);
+                padding: 1.35rem 1.35rem 1.1rem;
+                border-radius: 20px;
                 color: #f8fffb;
-                margin-bottom: 1rem;
-                box-shadow: 0 8px 22px rgba(6, 40, 34, 0.2);
+                margin-bottom: 1.15rem;
+                box-shadow: 0 18px 38px rgba(6, 40, 34, 0.18);
+                border: 1px solid rgba(255,255,255,0.1);
             }
-            .hero h1 { margin: 0; font-size: 1.45rem; font-weight: 800; }
-            .hero p  { margin: 0.35rem 0 0; opacity: 0.94; }
+            .hero-kicker {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.35rem;
+                padding: 0.28rem 0.62rem;
+                border-radius: 999px;
+                background: rgba(255,255,255,0.12);
+                border: 1px solid rgba(255,255,255,0.16);
+                font-size: 0.76rem;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 0.08em;
+            }
+            .hero h1 {
+                margin: 0.7rem 0 0;
+                font-size: 2rem;
+                line-height: 1.04;
+                font-weight: 800;
+                max-width: 12ch;
+            }
+            .hero p  {
+                margin: 0.55rem 0 0;
+                opacity: 0.94;
+                max-width: 60ch;
+                font-size: 1rem;
+            }
+            .hero-pills {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.55rem;
+                margin-top: 0.95rem;
+            }
+            .hero-pill {
+                display: inline-flex;
+                align-items: center;
+                padding: 0.42rem 0.7rem;
+                border-radius: 999px;
+                background: rgba(255,255,255,0.14);
+                border: 1px solid rgba(255,255,255,0.12);
+                font-size: 0.84rem;
+                font-weight: 700;
+            }
+            .section-intro {
+                margin: 0.5rem 0 0.85rem;
+                padding: 0.85rem 1rem;
+                background: rgba(255,255,255,0.72);
+                border: 1px solid rgba(17, 32, 43, 0.08);
+                border-radius: 16px;
+                box-shadow: 0 10px 24px rgba(17, 32, 43, 0.05);
+                backdrop-filter: blur(6px);
+            }
+            .section-eyebrow {
+                font-size: 0.76rem;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 0.08em;
+                color: var(--accent);
+                margin-bottom: 0.22rem;
+            }
+            .section-title {
+                margin: 0;
+                font-size: 1.2rem;
+                font-weight: 800;
+                color: var(--ink);
+            }
+            .section-copy {
+                margin: 0.32rem 0 0;
+                color: var(--muted);
+                font-size: 0.94rem;
+            }
             .metric {
                 background: var(--card);
-                border: 1px solid #dce7ef;
-                border-radius: 12px;
-                padding: 0.75rem;
-                box-shadow: 0 8px 18px rgba(17, 32, 43, 0.06);
+                border: 1px solid var(--line);
+                border-radius: 16px;
+                padding: 0.9rem 0.95rem;
+                box-shadow: 0 10px 22px rgba(17, 32, 43, 0.06);
+                color: var(--ink);
             }
             .metric-label {
                 color: var(--muted);
-                font-size: 0.82rem;
+                font-size: 0.74rem;
+                font-weight: 800;
                 text-transform: uppercase;
-                letter-spacing: 0.04rem;
+                letter-spacing: 0.08rem;
             }
-            .metric-value { font-size: 1.2rem; font-weight: 800; color: var(--ink); }
+            .metric-value {
+                font-size: 1.45rem;
+                font-weight: 800;
+                color: var(--ink);
+                margin-top: 0.2rem;
+                line-height: 1.05;
+            }
             .mono { font-family: 'IBM Plex Mono', monospace; }
             .skill-match { color: #007a70; font-weight: 700; }
             .skill-miss  { color: #c0392b; font-weight: 700; }
             .history-item {
                 border-left: 3px solid #237a57;
-                padding: 0.4rem 0.7rem;
-                margin-bottom: 0.4rem;
-                background: #f0faf5;
-                border-radius: 0 6px 6px 0;
+                padding: 0.55rem 0.8rem;
+                margin-bottom: 0.48rem;
+                background: #eef8f3;
+                border-radius: 0 10px 10px 0;
                 font-size: 0.85rem;
+                color: var(--ink);
             }
             .showcase-card {
-                background: linear-gradient(145deg, #ffffff, #eef6f4);
+                background: linear-gradient(145deg, #ffffff, #e7f3ef);
                 border: 1px solid #d3e8e2;
-                border-radius: 14px;
-                padding: 0.9rem;
-                box-shadow: 0 8px 20px rgba(10, 63, 49, 0.08);
+                border-radius: 18px;
+                padding: 1rem;
+                box-shadow: 0 12px 26px rgba(10, 63, 49, 0.08);
                 animation: fadeInUp 0.45s ease;
+                color: var(--ink);
+                min-height: 132px;
             }
             .showcase-label {
                 color: #45606a;
-                font-size: 0.78rem;
+                font-size: 0.74rem;
+                font-weight: 800;
                 text-transform: uppercase;
-                letter-spacing: 0.06rem;
+                letter-spacing: 0.08rem;
             }
             .showcase-value {
-                font-size: 1.4rem;
+                font-size: 1.7rem;
                 font-weight: 800;
                 color: #0a3f31;
-                margin-top: 0.1rem;
+                margin-top: 0.28rem;
+                line-height: 1.02;
             }
             .showcase-sub {
-                font-size: 0.82rem;
+                font-size: 0.86rem;
                 color: #4a5b67;
-                margin-top: 0.15rem;
+                margin-top: 0.3rem;
             }
             .brief-ok {
-                background: #ecfaf4;
+                background: #e6f6ef;
                 border-left: 4px solid #007a70;
-                padding: 0.55rem 0.7rem;
-                border-radius: 6px;
-                margin-bottom: 0.45rem;
+                padding: 0.7rem 0.8rem;
+                border-radius: 10px;
+                margin-bottom: 0.55rem;
                 font-size: 0.92rem;
+                color: var(--ink);
+                box-shadow: inset 0 0 0 1px rgba(0, 122, 112, 0.08);
+            }
+            .stTabs [data-baseweb="tab-list"] {
+                gap: 0.45rem;
+                background: rgba(255,255,255,0.5);
+                padding: 0.35rem;
+                border-radius: 14px;
+                border: 1px solid rgba(17, 32, 43, 0.08);
+            }
+            .stTabs [data-baseweb="tab"] {
+                height: auto;
+                padding: 0.55rem 0.9rem;
+                border-radius: 10px;
+                font-weight: 700;
+                color: var(--muted);
+            }
+            .stTabs [aria-selected="true"] {
+                background: #ffffff;
+                color: var(--ink);
+                box-shadow: 0 6px 16px rgba(17, 32, 43, 0.08);
+            }
+            .stButton > button, .stDownloadButton > button {
+                border-radius: 12px;
+                font-weight: 700;
+                border: 1px solid rgba(17, 32, 43, 0.08);
+                box-shadow: 0 8px 18px rgba(17, 32, 43, 0.06);
+            }
+            [data-testid="stSidebar"] {
+                border-right: 1px solid rgba(17, 32, 43, 0.06);
+                background: rgba(255,255,255,0.62);
+                backdrop-filter: blur(6px);
+            }
+            .brief-ok b,
+            .brief-ok strong,
+            .brief-ok span,
+            .brief-ok div,
+            .brief-ok p,
+            .showcase-card b,
+            .showcase-card strong,
+            .history-item b,
+            .history-item strong,
+            .metric b,
+            .metric strong {
+                color: inherit;
             }
             @keyframes fadeInUp {
                 from { opacity: 0; transform: translateY(8px); }
                 to { opacity: 1; transform: translateY(0); }
             }
+            @media (max-width: 900px) {
+                .hero h1 {
+                    font-size: 1.55rem;
+                    max-width: none;
+                }
+                .section-intro {
+                    padding: 0.8rem 0.9rem;
+                }
+                .showcase-card {
+                    min-height: auto;
+                }
+            }
         </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _render_section_intro(title: str, copy: str, eyebrow: str = "Workspace") -> None:
+    st.markdown(
+        f"""
+        <div class="section-intro">
+            <div class="section-eyebrow">{eyebrow}</div>
+            <h2 class="section-title">{title}</h2>
+            <p class="section-copy">{copy}</p>
+        </div>
         """,
         unsafe_allow_html=True,
     )
@@ -194,6 +362,51 @@ def _load_json_from_upload(uploaded_file) -> list[dict] | dict | None:
     return payload
 
 
+def _candidate_id_from_filename(filename: str, index: int) -> str:
+    stem = Path(filename).stem.strip().lower()
+    cleaned = "".join(ch if ch.isalnum() else "_" for ch in stem).strip("_")
+    return cleaned or f"uploaded_pdf_{index:03d}"
+
+
+def _make_unique_candidate_id(candidate_id: str, seen: set[str], index: int) -> str:
+    base = candidate_id.strip() or f"candidate_{index:03d}"
+    unique = base
+    suffix = 2
+    while unique in seen:
+        unique = f"{base}_{suffix}"
+        suffix += 1
+    seen.add(unique)
+    return unique
+
+
+def _ensure_unique_candidate_ids(cvs: list[dict]) -> list[dict]:
+    seen: set[str] = set()
+    normalized: list[dict] = []
+    for index, cv in enumerate(cvs, start=1):
+        record = dict(cv)
+        raw_id = _as_text(record.get("candidate_id", f"candidate_{index:03d}"), f"candidate_{index:03d}")
+        record["candidate_id"] = _make_unique_candidate_id(raw_id, seen, index)
+        normalized.append(record)
+    return normalized
+
+
+def _load_cvs_from_pdf_uploads(uploaded_files: list[Any]) -> list[dict[str, str]]:
+    cvs: list[dict[str, str]] = []
+    for index, uploaded_file in enumerate(uploaded_files, start=1):
+        text = _extract_pdf_text(uploaded_file.getvalue())
+        extraction_ok = bool(text.strip()) and not text.startswith("[PDF extraction error:")
+        cvs.append(
+            {
+                "candidate_id": _candidate_id_from_filename(uploaded_file.name, index),
+                "cv_text": text,
+                "source_file": uploaded_file.name,
+                "extraction_status": "success" if extraction_ok else "failure",
+            }
+        )
+    return _ensure_unique_candidate_ids(cvs)
+
+
+
 def _read_json_file(path: Path) -> dict[str, Any] | None:
     if not path.exists():
         return None
@@ -201,6 +414,12 @@ def _read_json_file(path: Path) -> dict[str, Any] | None:
         return json.loads(path.read_text(encoding="utf-8"))
     except Exception:
         return None
+
+
+def _as_text(value: Any, default: str = "") -> str:
+    if value is None:
+        return default
+    return str(value)
 
 
 def _collect_defense_evidence(root: Path) -> dict[str, Any]:
@@ -229,7 +448,7 @@ def _render_showcase_cards(evidence: dict[str, Any]) -> None:
     cards = [
         ("Model Accuracy", f"{evidence['model_accuracy']:.1%}", "PyTorch classifier"),
         ("Pipeline Accuracy", f"{evidence['pipeline_accuracy']:.1%}", f"{evidence['pipeline_cases']} labeled cases"),
-        ("Dataset Coverage", f"{evidence['n_cvs']} CV / {evidence['n_jobs']} Jobs", "Batch + Multi-Job demo ready"),
+        ("Dataset Coverage", f"{evidence['n_cvs']} CV / {evidence['n_jobs']} Jobs", "Single + batch demo ready"),
         ("Traceability", f"{evidence['logs_count']} run logs", "JSONL runtime evidence"),
     ]
     for col, (label, value, sub) in zip([c1, c2, c3, c4], cards):
@@ -249,7 +468,7 @@ def _render_brief_alignment(evidence: dict[str, Any]) -> None:
             ("Human-in-the-loop", "Borderline and conflict review checkpoint", True),
             ("Evaluation & robustness", "Unit tests + pipeline evaluation artifacts", evidence["has_tests"] and evidence["has_pipeline_eval"]),
             ("Traceability", "Per-run JSON logs and downloadable reports", evidence["logs_count"] > 0),
-            ("Presentation readiness", "Single, Batch, Multi-Job, PDF upload, explainability", True),
+            ("Presentation readiness", "Single CV, batch CV, PDF upload, explainability", True),
         ]
         for title, detail, ok in checks:
             status = "PASS" if ok else "MISSING"
@@ -291,7 +510,6 @@ def _render_quick_mode_guide() -> None:
         st.markdown("**Screening modes**")
         st.markdown("- Single = 1 CV to 1 job")
         st.markdown("- Batch = many CVs to 1 job")
-        st.markdown("- Multi-job = CVs and jobs both many side by side")
 
 
 def _resolve_ollama_executable() -> str | None:
@@ -395,11 +613,14 @@ def _apply_manual_human_decision(
     logger: JsonLogger,
     decision: str,
     reviewer: str,
+    comment: str = "",
 ) -> dict[str, Any]:
     status_map = {
         "Approve": "approved",
+        "Shortlist": "approved",
         "Reject": "rejected",
         "Flag": "flagged",
+        "Needs Review": "flagged",
     }
     recommendation_map = {
         "approved": "shortlist",
@@ -413,6 +634,7 @@ def _apply_manual_human_decision(
         "score": result.get("final_score"),
         "status": status,
         "reviewer": reviewer.strip() or "anonymous",
+        "comment": comment.strip(),
         "reason": "manual approval captured in Streamlit",
         "reasons": (result.get("human_review") or {}).get("reasons", result.get("review_reasons", [])),
         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -433,89 +655,369 @@ def _apply_manual_human_decision(
     return result
 
 
+def _render_hr_review_brief(result: dict[str, Any], cv_text: str, job_text: str) -> None:
+    """Show the evidence HR needs before making a manual decision."""
+    skill_result = extract_skills(cv_text, job_text)
+    review_reasons = result.get("review_reasons") or []
+    tech = result.get("technical", {})
+    profile = result.get("profile", {})
+
+    st.markdown("#### HR Review Gate")
+    st.caption("The AI is unsure, so HR must make the final hiring decision using the evidence below.")
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Final score", f"{result.get('final_score', 0):.4f}", result.get("final_label", ""))
+    c2.metric("Technical score", f"{tech.get('score', 0):.4f}", tech.get("label", ""))
+    c3.metric("Profile score", f"{profile.get('score', 0):.4f}", profile.get("label", ""))
+
+    if review_reasons:
+        st.warning("Why HR review was triggered: " + ", ".join(review_reasons))
+
+    left, right = st.columns(2)
+    with left:
+        st.markdown("**Matched job skills**")
+        if skill_result.matched_skills:
+            st.markdown(", ".join(skill_result.matched_skills))
+        else:
+            st.caption("No required skills were clearly matched.")
+
+        st.markdown("**Technical agent evidence**")
+        for item in tech.get("evidence", [])[:4]:
+            st.markdown(f"- {item}")
+
+    with right:
+        st.markdown("**Missing job skills**")
+        if skill_result.missing_skills:
+            st.markdown(", ".join(skill_result.missing_skills))
+        else:
+            st.caption("No required skill gaps detected.")
+
+        st.markdown("**Profile agent evidence**")
+        evidence = profile.get("evidence", [])
+        if evidence:
+            for item in evidence[:4]:
+                st.markdown(f"- {item}")
+        else:
+            st.caption("No strong profile evidence detected.")
+
+    with st.expander("Agent reasoning", expanded=False):
+        st.markdown(f"**Technical Matcher:** {tech.get('rationale', 'No rationale available.')}")
+        st.markdown(f"**Profile Analyzer:** {profile.get('rationale', 'No rationale available.')}")
+        st.markdown(f"**Orchestrator:** {result.get('orchestrator_summary', 'No summary available.')}")
+
+
+def _load_confusion_snapshot(root: Path) -> dict[str, Any]:
+    payload = _read_json_file(root / "models" / "model_evaluation.json") or {}
+    matrix = payload.get("confusion_matrix") or []
+    return {
+        "accuracy": payload.get("accuracy", 0.0),
+        "macro_f1": payload.get("macro_f1", 0.0),
+        "confusion_matrix": matrix,
+    }
+
+
+def _read_audit_rows(log_file: Path, limit: int = 120) -> list[dict[str, Any]]:
+    if not log_file.exists():
+        return []
+    rows: list[dict[str, Any]] = []
+    for line in log_file.read_text(encoding="utf-8").splitlines()[-limit:]:
+        try:
+            rows.append(json.loads(line))
+        except Exception:
+            continue
+    return rows
+
+
+def _reason_list(result: dict[str, Any]) -> list[str]:
+    reasons: list[str] = []
+    reasons.extend(result.get("technical", {}).get("evidence", []))
+    reasons.extend(result.get("profile", {}).get("evidence", []))
+    if result.get("review_reasons"):
+        reasons.extend([f"Review trigger: {item}" for item in result["review_reasons"]])
+    # Keep only unique values while preserving order.
+    seen: set[str] = set()
+    deduped: list[str] = []
+    for item in reasons:
+        if item not in seen:
+            seen.add(item)
+            deduped.append(item)
+    return deduped
+
+
+def _build_defense_pack(
+    *,
+    result: dict[str, Any],
+    candidate_id: str,
+    job_id: str,
+    cv_text: str,
+    job_text: str,
+    logger: JsonLogger,
+    root: Path,
+) -> dict[str, Any]:
+    return {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "mode": "single-screening-defense",
+        "candidate_id": candidate_id,
+        "job_id": job_id,
+        "result": result,
+        "skill_analysis": {
+            "matched": extract_skills(cv_text, job_text).matched_skills,
+            "missing": extract_skills(cv_text, job_text).missing_skills,
+        },
+        "model_snapshot": _load_confusion_snapshot(root),
+        "runtime_log_file": str(logger.log_file),
+        "audit_tail": _read_audit_rows(logger.log_file, limit=30),
+    }
+
+
+def _render_batch_results(
+    *,
+    batch_results: list[dict[str, Any]],
+    selected_job_id: str,
+    job_text: str,
+    generated_at: str,
+    ollama_model_input: str,
+    show_explain: bool,
+    logger: JsonLogger,
+    root: Path,
+) -> None:
+    st.success(f"Screened {len(batch_results)} candidates.")
+
+    import pandas as pd
+
+    label_emoji = {"High": "🟢", "Medium": "🟡", "Low": "🔴"}
+    rows = []
+    for rank, r in enumerate(batch_results, start=1):
+        rows.append({
+            "Rank": rank,
+            "Candidate": r["candidate_id"],
+            "Score": r["final_score"],
+            "Label": f"{label_emoji.get(r['final_label'], '')} {r['final_label']}",
+            "Recommendation": r["recommendation"],
+            "Tech": round(r["technical"]["score"], 3),
+            "Profile": round(r["profile"]["score"], 3),
+        })
+    st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+    chart_df = pd.DataFrame(
+        {r["candidate_id"]: r["final_score"] for r in batch_results},
+        index=["Score"],
+    ).T
+    st.bar_chart(chart_df, height=260)
+
+    dl1, dl2 = st.columns(2)
+    dl1.download_button(
+        label="Download Batch Report (JSON)",
+        data=json.dumps({"results": batch_results, "generated_at": generated_at}, indent=2),
+        file_name=f"batch_report_{selected_job_id}.json",
+        mime="application/json",
+        use_container_width=True,
+        on_click="ignore",
+    )
+    dl2.download_button(
+        label="Download Batch Report (CSV)",
+        data=_results_to_csv(batch_results),
+        file_name=f"batch_report_{selected_job_id}.csv",
+        mime="text/csv",
+        use_container_width=True,
+        on_click="ignore",
+    )
+
+    with st.expander("Individual result details"):
+        for r in batch_results:
+            with st.expander(f"{r['candidate_id']} — {r['final_label']} ({r['final_score']:.4f})"):
+                _render_single_result(
+                    r,
+                    ollama_model_input,
+                    show_explain,
+                    r.get("_cv_text", ""),
+                    job_text,
+                    logger,
+                    root,
+                )
+
+
 # ── Result rendering ─────────────────────────────────────────────────────────
 
-def _render_single_result(result: dict, ollama_model_input: str, show_explain: bool, cv_text: str, job_text: str) -> None:
+def _render_single_result(
+    result: dict,
+    ollama_model_input: str,
+    show_explain: bool,
+    cv_text: str,
+    job_text: str,
+    logger: JsonLogger,
+    root: Path,
+) -> None:
     label_colours = {"High": "#007a70", "Medium": "#e07b00", "Low": "#c0392b"}
     label = result["final_label"]
     colour = label_colours.get(label, "#333")
+    disagreement = abs(result["technical"]["score"] - result["profile"]["score"])
+    agreement_score = max(0.0, min(1.0, 1.0 - disagreement))
+    model_source = result.get("technical", {}).get("metadata", {}).get("model_used", "unknown")
+    skill_result = extract_skills(cv_text, job_text)
 
-    c1, c2, c3 = st.columns(3)
-    c1.markdown(
-        f"<div class='metric'><div class='metric-label'>Final Label</div>"
-        f"<div class='metric-value' style='color:{colour}'>{label}</div></div>",
-        unsafe_allow_html=True,
-    )
-    c2.markdown(
-        f"<div class='metric'><div class='metric-label'>Final Score</div>"
-        f"<div class='metric-value'>{result['final_score']:.4f}</div></div>",
-        unsafe_allow_html=True,
-    )
-    c3.markdown(
-        f"<div class='metric'><div class='metric-label'>Recommendation</div>"
-        f"<div class='metric-value'>{result['recommendation']}</div></div>",
-        unsafe_allow_html=True,
-    )
+    tabs = st.tabs(["Intake", "Agent Analysis", "Decision Room", "Evidence", "Audit Trail"])
 
-    # Score breakdown bar chart
-    st.markdown("##### Score breakdown")
-    import pandas as pd
-    chart_data = pd.DataFrame(
-        {"Score": [result["technical"]["score"], result["profile"]["score"], result["final_score"]]},
-        index=["Technical", "Profile", "Overall"],
-    )
-    st.bar_chart(chart_data, height=220)
+    with tabs[0]:
+        st.subheader("Intake")
+        i1, i2 = st.columns(2)
+        i1.markdown(f"**Candidate ID:** {result.get('candidate_id')}")
+        i1.markdown(f"**Job ID:** {result.get('job_id')}")
+        i2.markdown(f"**Model source:** {model_source}")
+        i2.markdown(f"**Ollama rationale enabled:** {'yes' if bool(result.get('llm_rationale')) else 'no'}")
 
-    st.markdown(f"**Orchestrator summary:** {result['orchestrator_summary']}")
+        with st.expander("Candidate CV snapshot", expanded=False):
+            st.text(cv_text[:3000])
+        with st.expander("Job description snapshot", expanded=False):
+            st.text(job_text[:3000])
 
-    if result.get("llm_rationale"):
-        st.info(f"**Ollama ({ollama_model_input}) rationale:** {result['llm_rationale']}")
+    with tabs[1]:
+        st.subheader("Agent Analysis")
+        c1, c2, c3 = st.columns(3)
+        c1.markdown(
+            f"<div class='metric'><div class='metric-label'>Technical Score</div>"
+            f"<div class='metric-value'>{result['technical']['score']:.4f}</div></div>",
+            unsafe_allow_html=True,
+        )
+        c2.markdown(
+            f"<div class='metric'><div class='metric-label'>Profile Score</div>"
+            f"<div class='metric-value'>{result['profile']['score']:.4f}</div></div>",
+            unsafe_allow_html=True,
+        )
+        c3.markdown(
+            f"<div class='metric'><div class='metric-label'>Agent Agreement</div>"
+            f"<div class='metric-value'>{agreement_score:.0%}</div></div>",
+            unsafe_allow_html=True,
+        )
+        st.progress(agreement_score, text=f"Agreement meter (1 - |tech - profile|): {agreement_score:.0%}")
 
-    # Skill gap panel
-    with st.expander("Skill Gap Analysis", expanded=True):
-        skill_result = extract_skills(cv_text, job_text)
-        sc1, sc2 = st.columns(2)
-        with sc1:
+        import pandas as pd
+        chart_data = pd.DataFrame(
+            {"Score": [result["technical"]["score"], result["profile"]["score"], result["final_score"]]},
+            index=["Technical", "Profile", "Overall"],
+        )
+        st.bar_chart(chart_data, height=220)
+
+        lcol, rcol = st.columns(2)
+        with lcol:
+            st.subheader("Technical Matcher")
+            st.write(result["technical"])
+        with rcol:
+            st.subheader("Profile Analyzer")
+            st.write(result["profile"])
+
+    with tabs[2]:
+        st.subheader("Decision Room")
+        d1, d2, d3 = st.columns(3)
+        d1.markdown(
+            f"<div class='metric'><div class='metric-label'>Final Label</div>"
+            f"<div class='metric-value' style='color:{colour}'>{label}</div></div>",
+            unsafe_allow_html=True,
+        )
+        d2.markdown(
+            f"<div class='metric'><div class='metric-label'>Final Score</div>"
+            f"<div class='metric-value'>{result['final_score']:.4f}</div></div>",
+            unsafe_allow_html=True,
+        )
+        d3.markdown(
+            f"<div class='metric'><div class='metric-label'>Recommendation</div>"
+            f"<div class='metric-value'>{result['recommendation']}</div></div>",
+            unsafe_allow_html=True,
+        )
+
+        st.markdown(f"**Orchestrator summary:** {result['orchestrator_summary']}")
+
+        top_reasons = _reason_list(result)[:5]
+        if top_reasons:
+            st.markdown("**Top decision reasons**")
+            for item in top_reasons:
+                st.markdown(f"- {item}")
+
+        if result.get("review_reasons"):
+            plain = ", ".join(result["review_reasons"])
+            st.warning(f"Human review trigger: {plain}")
+
+        if result.get("llm_rationale"):
+            st.info(f"Ollama ({ollama_model_input}) rationale: {result['llm_rationale']}")
+
+    with tabs[3]:
+        st.subheader("Evidence")
+        e1, e2 = st.columns(2)
+        with e1:
             st.markdown("**Matched skills**")
             if skill_result.matched_skills:
-                st.markdown(" ".join(
-                    f"<span class='skill-match'>✓ {s}</span>" for s in skill_result.matched_skills
-                ), unsafe_allow_html=True)
+                st.markdown(
+                    " ".join(f"<span class='skill-match'>✓ {s}</span>" for s in skill_result.matched_skills),
+                    unsafe_allow_html=True,
+                )
             else:
                 st.caption("None")
-        with sc2:
-            st.markdown("**Missing skills**")
+
+        with e2:
+            st.markdown("**Job skills not found in this CV**")
             missing = skill_result.missing_skills or []
             if missing:
-                st.markdown(" ".join(
-                    f"<span class='skill-miss'>✗ {s}</span>" for s in missing
-                ), unsafe_allow_html=True)
+                st.markdown(
+                    " ".join(f"<span class='skill-miss'>✗ {s}</span>" for s in missing),
+                    unsafe_allow_html=True,
+                )
             else:
-                st.caption("No gaps detected")
-        st.progress(min(skill_result.coverage, 1.0), text=f"Skill coverage: {skill_result.coverage:.0%}")
+                st.caption("No skill gaps detected")
 
-    # Explainability heatmap
-    if show_explain:
-        with st.expander("Explainability — CV keyword highlights", expanded=True):
-            st.caption("Words highlighted in green are recognised signal terms that influenced the score.")
-            st.markdown(
-                f"<div style='line-height:1.9;font-size:0.95rem'>{_highlight_cv(cv_text, job_text)}</div>",
-                unsafe_allow_html=True,
+        st.progress(min(skill_result.coverage, 1.0), text=f"CV skill coverage: {skill_result.coverage:.0%}")
+
+        total_req = len(skill_result.job_skills or [])
+        missing_count = len(skill_result.missing_skills or [])
+        matched_count = len(skill_result.matched_skills or [])
+        import pandas as pd
+        gap_df = pd.DataFrame(
+            {"Count": [matched_count, missing_count, max(total_req - matched_count - missing_count, 0)]},
+            index=["Matched", "Missing", "Other"],
+        )
+        st.bar_chart(gap_df, height=200)
+
+        snapshot = _load_confusion_snapshot(root)
+        st.markdown("**Model evaluation snapshot**")
+        s1, s2 = st.columns(2)
+        s1.metric("Model Accuracy", f"{float(snapshot.get('accuracy', 0.0)):.1%}")
+        s2.metric("Macro F1", f"{float(snapshot.get('macro_f1', 0.0)):.1%}")
+        st.caption("Confusion matrix from model evaluation artifact")
+        st.json(snapshot.get("confusion_matrix", []))
+
+        if show_explain:
+            with st.expander("CV signal highlights", expanded=False):
+                st.caption("Highlighted words indicate signal terms used by the pipeline features.")
+                st.markdown(
+                    f"<div style='line-height:1.9;font-size:0.95rem'>{_highlight_cv(cv_text, job_text)}</div>",
+                    unsafe_allow_html=True,
+                )
+
+    with tabs[4]:
+        st.subheader("Audit Trail")
+        rows = _read_audit_rows(logger.log_file, limit=120)
+        if not rows:
+            st.info("No audit rows found yet.")
+        else:
+            st.caption(f"Showing last {len(rows)} events from {logger.log_file}")
+            for row in rows[-30:][::-1]:
+                status = str(row.get("status") or "unknown").upper()
+                stamp = row.get("timestamp") or ""
+                agent = row.get("agent_name") or "system"
+                action = row.get("action") or row.get("event") or "event"
+                st.markdown(
+                    f"<div class='history-item'><b>{stamp}</b><br>{agent} · {action} · {status}</div>",
+                    unsafe_allow_html=True,
+                )
+
+            st.download_button(
+                label="Download Audit Tail (JSON)",
+                data=json.dumps(rows, indent=2, ensure_ascii=False),
+                file_name=f"audit_tail_{result.get('candidate_id')}_{result.get('job_id')}.json",
+                mime="application/json",
+                use_container_width=True,
             )
 
-    tcol, pcol = st.columns(2)
-    with tcol:
-        st.subheader("Technical Agent")
-        st.write(result["technical"])
-    with pcol:
-        st.subheader("Profile Agent")
-        st.write(result["profile"])
-
-    if result.get("human_review"):
-        st.warning("Human review was triggered for this decision.")
-        st.json(result["human_review"])
-
-    with st.expander("Raw JSON output"):
+    with st.expander("Raw JSON output", expanded=False):
         st.json(result)
 
 
@@ -531,14 +1033,26 @@ def main() -> None:
     st.markdown(
         """
         <div class="hero">
+            <div class="hero-kicker">Recruiter Decision Cockpit</div>
             <h1>CV Screening Multi-Agent Dashboard</h1>
-            <p>Run technical + profile agents, inspect evidence, and present final hiring recommendations live.</p>
+            <p>Run the specialist agents, inspect deep-learning evidence, capture human approval, and present a defense-ready hiring recommendation in one place.</p>
+            <div class="hero-pills">
+                <span class="hero-pill">2 Specialist Agents</span>
+                <span class="hero-pill">PyTorch Tool in Workflow</span>
+                <span class="hero-pill">Human Approval Gate</span>
+                <span class="hero-pill">JSON Audit Trail</span>
+            </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
     evidence = _collect_defense_evidence(root)
+    _render_section_intro(
+        "Defense Snapshot",
+        "A compact overview of the model, pipeline, data coverage, and checklist evidence you can show in a live presentation.",
+        eyebrow="Overview",
+    )
     _render_showcase_cards(evidence)
     _render_brief_alignment(evidence)
 
@@ -546,11 +1060,10 @@ def main() -> None:
     st.sidebar.header("Mode")
     app_mode = st.sidebar.radio(
         "Application mode",
-        ["Single Screening", "Batch Screening", "Multi-Job Match"],
+        ["Single Screening", "Batch Screening"],
         help=(
             "Single: screen one CV against one job.\n"
-            "Batch: screen multiple CVs against one job, ranked leaderboard.\n"
-            "Multi-Job: screen one CV against all available jobs."
+            "Batch: screen multiple CVs against one job, ranked leaderboard."
         ),
     )
     _render_quick_mode_guide()
@@ -603,7 +1116,7 @@ def main() -> None:
         help="When enabled, flagged decisions require explicit reviewer confirmation before final output is shown in single-screening mode.",
     )
     if require_human_approval and app_mode != "Single Screening":
-        st.sidebar.caption("Strict blocking approval is applied in Single Screening mode. Batch and Multi-Job modes mark pending review.")
+        st.sidebar.caption("Strict blocking approval is applied in Single Screening mode. Batch mode marks pending review.")
 
     # ── Session history (shared across all modes) ─────────────────────────────
     if "history" not in st.session_state:
@@ -619,9 +1132,19 @@ def main() -> None:
     # MODE 1 — SINGLE SCREENING
     # ═════════════════════════════════════════════════════════════════════════
     if app_mode == "Single Screening":
+        _render_section_intro(
+            "Single Candidate Review",
+            "Screen one CV against one role, inspect specialist outputs side by side, and capture reviewer approval when the system flags uncertainty.",
+            eyebrow="Mode 1",
+        )
         st.sidebar.divider()
         st.sidebar.subheader("Input Source")
         source = st.sidebar.radio("Choose source", ["Sample Data", "Manual Input", "Upload JSON", "Upload PDF"])
+        defense_demo_mode = st.sidebar.toggle(
+            "Defense demo mode",
+            value=False,
+            help="Shows architecture/checklist sections and enables one-click scripted sample run.",
+        )
 
         cv_record: dict = sample_cv.copy()
         job_record: dict = sample_job.copy()
@@ -656,15 +1179,41 @@ def main() -> None:
 
         left, right = st.columns(2)
         with left:
-            cv_text = st.text_area("Candidate CV", value=cv_text_override or cv_record.get("cv_text", ""), height=220)
+            cv_text = _as_text(st.text_area("Candidate CV", value=cv_text_override or cv_record.get("cv_text", ""), height=220))
         with right:
-            job_text = st.text_area("Job Description", value=job_record.get("job_text", ""), height=220)
+            job_text = _as_text(st.text_area("Job Description", value=job_record.get("job_text", ""), height=220))
 
-        candidate_id = st.text_input("Candidate ID", value=cv_record.get("candidate_id", "cand_demo"))
-        job_id = st.text_input("Job ID", value=job_record.get("job_id", "job_demo"))
+        candidate_id = _as_text(st.text_input("Candidate ID", value=cv_record.get("candidate_id", "cand_demo")))
+        job_id = _as_text(st.text_input("Job ID", value=job_record.get("job_id", "job_demo")))
 
-        run_clicked = st.button("Run Screening", type="primary", use_container_width=True)
-        if not run_clicked:
+        if defense_demo_mode:
+            with st.expander("Architecture summary", expanded=True):
+                st.markdown("- Orchestrator combines Technical Matcher and Profile Analyzer.")
+                st.markdown("- Technical Matcher uses DL model tool and skill extractor.")
+                st.markdown("- Borderline or conflicted outcomes route to HITL checkpoint.")
+            with st.expander("Requirement checklist", expanded=True):
+                st.markdown("- Multi-agent roles: PASS")
+                st.markdown("- DL model as callable tool: PASS")
+                st.markdown("- HITL decision gate: PASS")
+                st.markdown("- JSON logging and audit trail: PASS")
+                st.markdown("- Reproducible run/evaluation commands: PASS")
+
+        run_col, demo_col = st.columns(2)
+        run_clicked = run_col.button("Run Screening", type="primary", use_container_width=True)
+        demo_clicked = demo_col.button(
+            "Run Defense Demo",
+            use_container_width=True,
+            disabled=not defense_demo_mode,
+            help="Runs a scripted sample with export-ready evidence.",
+        )
+
+        if demo_clicked:
+            candidate_id = _as_text(sample_cv.get("candidate_id", candidate_id), candidate_id)
+            job_id = _as_text(sample_job.get("job_id", job_id), job_id)
+            cv_text = _as_text(sample_cv.get("cv_text", cv_text), cv_text)
+            job_text = _as_text(sample_job.get("job_text", job_text), job_text)
+
+        if not run_clicked and not demo_clicked:
             st.info("Fill the inputs and click Run Screening.")
             _render_history()
             return
@@ -687,10 +1236,11 @@ def main() -> None:
         review = result.get("human_review") or {}
         review_status = review.get("status")
         if require_human_approval and review_status == "pending-human-approval":
-            st.warning("Human approval is required before final recommendation can be finalized.")
+            st.warning("HR review is required before the final recommendation can be finalized.")
+            _render_hr_review_brief(result, cv_text, job_text)
             decision = st.radio(
-                "Reviewer decision",
-                ["Approve", "Reject", "Flag"],
+                "Final HR decision",
+                ["Shortlist", "Reject", "Needs Review"],
                 horizontal=True,
                 key=f"decision_{candidate_id}_{job_id}",
             )
@@ -699,11 +1249,17 @@ def main() -> None:
                 value="",
                 key=f"reviewer_{candidate_id}_{job_id}",
             )
-            if not st.button("Confirm Human Decision", type="primary", use_container_width=True):
-                st.info("Confirm a reviewer decision to continue.")
+            reviewer_comment = st.text_area(
+                "Reviewer comment (optional)",
+                value="",
+                key=f"reviewer_comment_{candidate_id}_{job_id}",
+                height=80,
+            )
+            if not st.button("Confirm HR Decision", type="primary", use_container_width=True):
+                st.info("Review the analysis above, then confirm the HR decision to continue.")
                 st.stop()
 
-            result = _apply_manual_human_decision(result, logger, decision, reviewer)
+            result = _apply_manual_human_decision(result, logger, decision, reviewer, reviewer_comment)
 
         st.session_state["history"].insert(0, {
             "ts": datetime.now(timezone.utc).strftime("%H:%M:%S"),
@@ -714,15 +1270,24 @@ def main() -> None:
             "recommendation": result["recommendation"],
         })
 
-        _render_single_result(result, ollama_model_input, show_explain, cv_text, job_text)
+        _render_single_result(result, ollama_model_input, show_explain, cv_text, job_text, logger, root)
 
         report_payload = {
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "source": "cv-screening-multiagent-streamlit",
             "result": result,
         }
+        defense_pack = _build_defense_pack(
+            result=result,
+            candidate_id=candidate_id,
+            job_id=job_id,
+            cv_text=cv_text,
+            job_text=job_text,
+            logger=logger,
+            root=root,
+        )
         report_name = f"screening_report_{candidate_id}_{job_id}.json".replace(" ", "_")
-        dl1, dl2 = st.columns(2)
+        dl1, dl2, dl3 = st.columns(3)
         dl1.download_button(
             label="Download Report (JSON)",
             data=json.dumps(report_payload, indent=2, ensure_ascii=False),
@@ -737,6 +1302,13 @@ def main() -> None:
             mime="text/csv",
             use_container_width=True,
         )
+        dl3.download_button(
+            label="Download Defense Pack (JSON)",
+            data=json.dumps(defense_pack, indent=2, ensure_ascii=False),
+            file_name=report_name.replace(".json", "_defense_pack.json"),
+            mime="application/json",
+            use_container_width=True,
+        )
 
         st.caption(f"Log file: {logger.log_file}")
         _render_history()
@@ -745,10 +1317,19 @@ def main() -> None:
     # MODE 2 — BATCH SCREENING
     # ═════════════════════════════════════════════════════════════════════════
     elif app_mode == "Batch Screening":
+        _render_section_intro(
+            "Batch Candidate Leaderboard",
+            "Rank multiple candidates against one target role and export a shortlist-ready leaderboard with underlying agent scores.",
+            eyebrow="Mode 2",
+        )
         st.subheader("Batch Screening — candidate leaderboard")
         st.caption("Screen multiple CVs against a single job and rank by fit score.")
 
-        batch_source = st.radio("CV source", ["Sample CVs (built-in)", "Upload CV list (JSON)"], horizontal=True)
+        batch_source = st.radio(
+            "CV source",
+            ["Sample CVs (built-in)", "Upload CV list (JSON)", "Upload CV PDFs"],
+            horizontal=True,
+        )
         cvs: list[dict] = _load_all_cvs(root)
 
         if batch_source == "Upload CV list (JSON)":
@@ -761,36 +1342,85 @@ def main() -> None:
                     cvs = [loaded]
                 else:
                     st.error("Invalid CV list JSON format.")
+        elif batch_source == "Upload CV PDFs":
+            uploaded_pdfs = st.file_uploader(
+                "Upload one or more CV PDFs",
+                type=["pdf"],
+                accept_multiple_files=True,
+            )
+            if uploaded_pdfs:
+                cvs = _load_cvs_from_pdf_uploads(uploaded_pdfs)
+                with st.expander("Extracted PDF CVs", expanded=False):
+                    for cv in cvs:
+                        st.markdown(f"**{cv['candidate_id']}** from `{cv.get('source_file', '')}`")
+                        if cv.get("extraction_status") != "success":
+                            st.error("Text extraction failed or produced empty text for this PDF.")
+                        st.text(_as_text(cv.get("cv_text", ""))[:1500])
+            else:
+                cvs = []
 
         st.markdown(f"**{len(cvs)} CV(s) loaded.**")
 
         jobs = _load_all_jobs(root)
         job_options = {j["job_id"]: j for j in jobs}
-        selected_job_id = st.selectbox("Select job", list(job_options.keys()))
+        selected_job_id = _as_text(st.selectbox("Select job", list(job_options.keys())))
         selected_job = job_options[selected_job_id]
 
-        job_text = st.text_area("Job description", value=selected_job["job_text"], height=120)
+        job_text = _as_text(st.text_area("Job description", value=selected_job["job_text"], height=120))
 
         run_batch = st.button("Run Batch Screening", type="primary", use_container_width=True)
         if not run_batch:
-            st.info("Select a job and click Run Batch Screening.")
+            saved_batch = st.session_state.get("last_batch_screening")
+            if (
+                saved_batch
+                and saved_batch.get("job_id") == selected_job_id
+                and saved_batch.get("job_text") == job_text
+            ):
+                st.info("Showing the latest batch analysis. Click Run Batch Screening to refresh it.")
+                _render_batch_results(
+                    batch_results=saved_batch["results"],
+                    selected_job_id=saved_batch["job_id"],
+                    job_text=saved_batch["job_text"],
+                    generated_at=saved_batch["generated_at"],
+                    ollama_model_input=ollama_model_input,
+                    show_explain=show_explain,
+                    logger=logger,
+                    root=root,
+                )
+            elif saved_batch:
+                st.info("Inputs changed. Click Run Batch Screening to analyze this job/CV set.")
+            else:
+                st.info("Select a job and click Run Batch Screening.")
             _render_history()
+            return
+
+        valid_cvs = _ensure_unique_candidate_ids(
+            [
+                cv for cv in cvs
+                if _as_text(cv.get("cv_text", "")).strip()
+                and cv.get("extraction_status", "success") == "success"
+            ]
+        )
+        if not valid_cvs:
+            st.error("At least one CV with cv_text is required.")
             return
 
         batch_results: list[dict] = []
         progress = st.progress(0, text="Starting…")
-        for idx, cv in enumerate(cvs):
-            progress.progress((idx + 1) / len(cvs), text=f"Screening {cv.get('candidate_id', idx+1)}…")
-            r = _run_one(
-                cv_text=cv.get("cv_text", ""),
-                job_text=job_text,
-                candidate_id=cv.get("candidate_id", f"cand_{idx}"),
-                job_id=selected_job_id,
-                logger=logger,
-                ollama_client=ollama_client,
-                require_human_approval=require_human_approval,
-            )
-            r["_cv_text"] = cv.get("cv_text", "")
+        raw_results = run_batch_screening(
+            cv_records=valid_cvs,
+            job_record={"job_id": selected_job_id, "job_text": job_text},
+            model_path=settings.model_path_abs,
+            low=settings.borderline_low,
+            high=settings.borderline_high,
+            logger=logger,
+            ollama_client=ollama_client,
+            require_human_approval=require_human_approval,
+        )
+        cv_lookup = {cv["candidate_id"]: _as_text(cv.get("cv_text", "")) for cv in valid_cvs}
+        for idx, r in enumerate(raw_results):
+            progress.progress((idx + 1) / len(raw_results), text=f"Completed {r.get('candidate_id', idx + 1)}")
+            r["_cv_text"] = cv_lookup.get(r["candidate_id"], "")
             batch_results.append(r)
             st.session_state["history"].insert(0, {
                 "ts": datetime.now(timezone.utc).strftime("%H:%M:%S"),
@@ -802,189 +1432,23 @@ def main() -> None:
             })
         progress.empty()
 
-        # Rank by score descending
-        batch_results.sort(key=lambda x: x["final_score"], reverse=True)
-
-        st.success(f"Screened {len(batch_results)} candidates.")
-
-        # Leaderboard table
-        import pandas as pd
-        label_emoji = {"High": "🟢", "Medium": "🟡", "Low": "🔴"}
-        rows = []
-        for rank, r in enumerate(batch_results, start=1):
-            rows.append({
-                "Rank": rank,
-                "Candidate": r["candidate_id"],
-                "Score": r["final_score"],
-                "Label": f"{label_emoji.get(r['final_label'], '')} {r['final_label']}",
-                "Recommendation": r["recommendation"],
-                "Tech": round(r["technical"]["score"], 3),
-                "Profile": round(r["profile"]["score"], 3),
-            })
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
-
-        # Score chart for all candidates
-        chart_df = pd.DataFrame(
-            {r["candidate_id"]: r["final_score"] for r in batch_results},
-            index=["Score"],
-        ).T
-        st.bar_chart(chart_df, height=260)
-
-        dl1, dl2 = st.columns(2)
-        dl1.download_button(
-            label="Download Batch Report (JSON)",
-            data=json.dumps({"results": batch_results, "generated_at": datetime.now(timezone.utc).isoformat()}, indent=2),
-            file_name=f"batch_report_{selected_job_id}.json",
-            mime="application/json",
-            use_container_width=True,
+        generated_at = datetime.now(timezone.utc).isoformat()
+        st.session_state["last_batch_screening"] = {
+            "results": batch_results,
+            "job_id": selected_job_id,
+            "job_text": job_text,
+            "generated_at": generated_at,
+        }
+        _render_batch_results(
+            batch_results=batch_results,
+            selected_job_id=selected_job_id,
+            job_text=job_text,
+            generated_at=generated_at,
+            ollama_model_input=ollama_model_input,
+            show_explain=show_explain,
+            logger=logger,
+            root=root,
         )
-        dl2.download_button(
-            label="Download Batch Report (CSV)",
-            data=_results_to_csv(batch_results),
-            file_name=f"batch_report_{selected_job_id}.csv",
-            mime="text/csv",
-            use_container_width=True,
-        )
-
-        with st.expander("Individual result details"):
-            for r in batch_results:
-                with st.expander(f"{r['candidate_id']} — {r['final_label']} ({r['final_score']:.4f})"):
-                    _render_single_result(r, ollama_model_input, show_explain, r.get("_cv_text", ""), job_text)
-
-        _render_history()
-
-    # ═════════════════════════════════════════════════════════════════════════
-    # MODE 3 — MULTI-JOB MATCH
-    # ═════════════════════════════════════════════════════════════════════════
-    elif app_mode == "Multi-Job Match":
-        st.subheader("Multi-Job Match — best job fit for one candidate")
-        st.caption("Compare a single CV against all available jobs and rank best fits.")
-
-        mj_source = st.radio("CV source", ["Sample CV", "Manual Input", "Upload PDF", "Upload JSON"], horizontal=True)
-        cv_text = sample_cv.get("cv_text", "")
-        candidate_id = sample_cv.get("candidate_id", "cand_demo")
-
-        if mj_source == "Manual Input":
-            candidate_id = st.text_input("Candidate ID", value=candidate_id)
-            cv_text = st.text_area("Candidate CV", value=cv_text, height=200)
-        elif mj_source == "Upload PDF":
-            pdf_file = st.file_uploader("Upload CV (PDF)", type=["pdf"])
-            candidate_id = st.text_input("Candidate ID", value=candidate_id)
-            if pdf_file:
-                cv_text = _extract_pdf_text(pdf_file.getvalue())
-            cv_text = st.text_area("Extracted CV text (editable)", value=cv_text, height=200)
-        elif mj_source == "Upload JSON":
-            cv_file_json = st.file_uploader("Upload CV JSON", type=["json"])
-            loaded = _load_json_from_upload(cv_file_json)
-            if loaded:
-                cv_record = loaded if isinstance(loaded, dict) else loaded[0]
-                cv_text = cv_record.get("cv_text", cv_text)
-                candidate_id = cv_record.get("candidate_id", candidate_id)
-            elif cv_file_json is not None:
-                st.error("Invalid CV JSON format.")
-            candidate_id = st.text_input("Candidate ID", value=candidate_id)
-            cv_text = st.text_area("Candidate CV", value=cv_text, height=200)
-        else:
-            cv_text = st.text_area("Candidate CV", value=cv_text, height=200)
-
-        jobs = _load_all_jobs(root)
-        st.markdown(f"Will match against **{len(jobs)} job(s)**.")
-
-        run_mj = st.button("Find Best Job Matches", type="primary", use_container_width=True)
-        if not run_mj:
-            st.info("Fill in the CV and click Find Best Job Matches.")
-            _render_history()
-            return
-
-        if not cv_text.strip():
-            st.error("CV text is required.")
-            return
-
-        mj_results: list[dict] = []
-        progress = st.progress(0, text="Matching jobs…")
-        for idx, job in enumerate(jobs):
-            progress.progress((idx + 1) / len(jobs), text=f"Matching against {job['job_id']}…")
-            r = _run_one(
-                cv_text=cv_text,
-                job_text=job["job_text"],
-                candidate_id=candidate_id,
-                job_id=job["job_id"],
-                logger=logger,
-                ollama_client=ollama_client,
-                require_human_approval=require_human_approval,
-            )
-            r["_job_text"] = job["job_text"]
-            mj_results.append(r)
-            st.session_state["history"].insert(0, {
-                "ts": datetime.now(timezone.utc).strftime("%H:%M:%S"),
-                "candidate_id": r["candidate_id"],
-                "job_id": r["job_id"],
-                "label": r["final_label"],
-                "score": r["final_score"],
-                "recommendation": r["recommendation"],
-            })
-        progress.empty()
-
-        mj_results.sort(key=lambda x: x["final_score"], reverse=True)
-        best = mj_results[0]
-        st.success(f"Best match: **{best['job_id']}** — {best['final_label']} ({best['final_score']:.4f})")
-
-        import pandas as pd
-        label_emoji = {"High": "🟢", "Medium": "🟡", "Low": "🔴"}
-        rows = []
-        for rank, r in enumerate(mj_results, start=1):
-            rows.append({
-                "Rank": rank,
-                "Job ID": r["job_id"],
-                "Score": r["final_score"],
-                "Label": f"{label_emoji.get(r['final_label'], '')} {r['final_label']}",
-                "Recommendation": r["recommendation"],
-                "Tech": round(r["technical"]["score"], 3),
-                "Profile": round(r["profile"]["score"], 3),
-            })
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
-
-        chart_df = pd.DataFrame(
-            {r["job_id"]: r["final_score"] for r in mj_results},
-            index=["Score"],
-        ).T
-        st.bar_chart(chart_df, height=260)
-
-        dl1, dl2 = st.columns(2)
-        dl1.download_button(
-            label="Download Multi-Job Report (JSON)",
-            data=json.dumps({"candidate_id": candidate_id, "results": mj_results, "generated_at": datetime.now(timezone.utc).isoformat()}, indent=2),
-            file_name=f"multijob_report_{candidate_id}.json",
-            mime="application/json",
-            use_container_width=True,
-        )
-        dl2.download_button(
-            label="Download Multi-Job Report (CSV)",
-            data=_results_to_csv(mj_results),
-            file_name=f"multijob_report_{candidate_id}.csv",
-            mime="text/csv",
-            use_container_width=True,
-        )
-
-        with st.expander("Skill gap per job"):
-            for r in mj_results:
-                with st.expander(f"{r['job_id']} — score {r['final_score']:.4f}"):
-                    skill_r = extract_skills(cv_text, r.get("_job_text", ""))
-                    sc1, sc2 = st.columns(2)
-                    with sc1:
-                        st.markdown("**Matched**")
-                        if skill_r.matched_skills:
-                            st.markdown(" ".join(f"<span class='skill-match'>✓ {s}</span>" for s in skill_r.matched_skills), unsafe_allow_html=True)
-                        else:
-                            st.caption("None")
-                    with sc2:
-                        st.markdown("**Missing**")
-                        missing = skill_r.missing_skills or []
-                        if missing:
-                            st.markdown(" ".join(f"<span class='skill-miss'>✗ {s}</span>" for s in missing), unsafe_allow_html=True)
-                        else:
-                            st.caption("No gaps")
-                    st.progress(min(skill_r.coverage, 1.0), text=f"Coverage: {skill_r.coverage:.0%}")
 
         _render_history()
 

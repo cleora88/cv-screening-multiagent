@@ -79,6 +79,7 @@ def main() -> None:
             low=settings.borderline_low,
             high=settings.borderline_high,
             logger=logger,
+            interactive_human_review=False,
         )
         outputs.append(
             {

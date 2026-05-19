@@ -23,8 +23,10 @@ env*/
 # Runtime artifacts
 logs/*.jsonl
 logs/*.json
+!logs/pipeline_evaluation.json
 models/*.pt
 models/*.pth
+!models/cv_fit_model.pt
 data/train_synthetic.json
 
 # OS/editor noise

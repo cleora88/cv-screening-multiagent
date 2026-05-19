@@ -1,0 +1,104 @@
+{
+  "n_cases": 6,
+  "metrics": {
+    "accuracy": 0.8333,
+    "macro_precision": 0.8889,
+    "macro_recall": 0.8333,
+    "macro_f1": 0.8222,
+    "per_class": {
+      "Low": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 2
+      },
+      "Medium": {
+        "precision": 0.6667,
+        "recall": 1.0,
+        "f1": 0.8,
+        "support": 2
+      },
+      "High": {
+        "precision": 1.0,
+        "recall": 0.5,
+        "f1": 0.6667,
+        "support": 2
+      }
+    },
+    "confusion_matrix": [
+      [
+        2,
+        0,
+        0
+      ],
+      [
+        0,
+        2,
+        0
+      ],
+      [
+        0,
+        1,
+        1
+      ]
+    ],
+    "labels": [
+      "Low",
+      "Medium",
+      "High"
+    ]
+  },
+  "cases": [
+    {
+      "candidate_id": "eval_001",
+      "expected_label": "High",
+      "predicted_label": "High",
+      "recommendation": "shortlist",
+      "final_score": 0.9823,
+      "review_reasons": []
+    },
+    {
+      "candidate_id": "eval_002",
+      "expected_label": "Medium",
+      "predicted_label": "Medium",
+      "recommendation": "review",
+      "final_score": 0.607,
+      "review_reasons": []
+    },
+    {
+      "candidate_id": "eval_003",
+      "expected_label": "High",
+      "predicted_label": "Medium",
+      "recommendation": "review",
+      "final_score": 0.627,
+      "review_reasons": []
+    },
+    {
+      "candidate_id": "eval_004",
+      "expected_label": "Medium",
+      "predicted_label": "Medium",
+      "recommendation": "review",
+      "final_score": 0.4792,
+      "review_reasons": [
+        "borderline final score"
+      ]
+    },
+    {
+      "candidate_id": "eval_005",
+      "expected_label": "Low",
+      "predicted_label": "Low",
+      "recommendation": "reject",
+      "final_score": 0.2524,
+      "review_reasons": []
+    },
+    {
+      "candidate_id": "eval_006",
+      "expected_label": "Low",
+      "predicted_label": "Low",
+      "recommendation": "reject",
+      "final_score": 0.3707,
+      "review_reasons": []
+    }
+  ],
+  "log_file": "C:\\Users\\User\\Downloads\\cv-screening-multiagent\\logs\\run_20260519T231818Z.jsonl"
+}

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from src.agents.schemas import AgentOutput, ScreeningInput
+from src.pipeline.scoring import label_from_score, recommendation_from_label
 from src.tools.model_tool import run_model_tool
 from src.tools.skill_extractor_tool import extract_skills
 
@@ -22,8 +23,8 @@ def technical_match(screening_input: ScreeningInput, model_path) -> AgentOutput:
         )
 
     blended = (model_result.score * 0.7) + (skill_result.coverage * 0.3)
-    label = "High" if blended >= 0.67 else "Medium" if blended >= 0.45 else "Low"
-    recommendation = "shortlist" if label == "High" else "review" if label == "Medium" else "reject"
+    label = label_from_score(blended)
+    recommendation = recommendation_from_label(label)
     missing_skills = skill_result.missing_skills or []
     evidence = [
         f"Model label: {model_result.fit_label} via {model_result.model_used}",

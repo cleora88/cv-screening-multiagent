@@ -69,6 +69,24 @@ class TestSkillExtractorEdgeCases:
 
 
 class TestHitlStrictMode:
+    def test_noninteractive_defaults_to_flagged_review(self, monkeypatch):
+        class _FakeStdin:
+            @staticmethod
+            def isatty() -> bool:
+                return False
+
+        monkeypatch.setattr("sys.stdin", _FakeStdin())
+        result = human_checkpoint(
+            candidate_id="cand_noninteractive",
+            score=0.5,
+            rationale="borderline",
+            reasons=["borderline final score"],
+            require_human_approval=False,
+        )
+
+        assert result["status"] == "auto-flagged"
+        assert result["reasons"] == ["borderline final score"]
+
     def test_pending_when_human_required_and_noninteractive(self, monkeypatch):
         class _FakeStdin:
             @staticmethod

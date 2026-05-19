@@ -65,14 +65,14 @@ Human review is triggered if:
 Strict HITL is available in both CLI and frontend:
 
 - CLI strict mode (`--require-human-approval`) marks pending review when no interactive reviewer is available.
-- Streamlit Single Screening mode includes a blocking reviewer decision step (Approve/Reject/Flag) before final recommendation is finalized.
+- Streamlit Single Screening mode includes a blocking HR decision step (Shortlist/Reject/Needs Review) before final recommendation is finalized.
 
 ## 5. Data and Model
 
 ### 5.1 Data
 
 - Sample CV data: multiple candidate profiles
-- Sample job data: multiple job descriptions (multi-job matching support)
+- Sample job data: one Junior Data Analyst role for the simplified HR shortlist workflow
 - Labeled evaluation dataset for pipeline validation
 
 ### 5.2 Model
@@ -121,7 +121,7 @@ Strict HITL is available in both CLI and frontend:
 
 ## 7. Frontend Features (Presentation Focus)
 
-The Streamlit frontend includes three major demo modes:
+The Streamlit frontend focuses on two demo modes that match the simplified HR use case:
 
 1. Single Screening
    - One CV vs one job
@@ -134,11 +134,6 @@ The Streamlit frontend includes three major demo modes:
    - Multiple CVs vs one selected job
    - Leaderboard ranking
    - Charts and downloadable reports
-
-3. Multi-Job Match
-   - One CV vs all jobs
-   - Ranked best-fit jobs
-   - Skill-gap comparison per job
 
 Additional presentation capabilities:
 
@@ -170,7 +165,7 @@ Project runner script:
 ### 9.1 Automated Tests
 
 - Test framework: pytest
-- Status: all tests passing (13/13)
+- Status: all tests passing (16/16)
 
 ### 9.2 Pipeline Evaluation
 
@@ -225,8 +220,8 @@ Requirement coverage summary:
 - Cause: borderline cases triggered terminal prompt in web flow
 - Solution:
   - Added strict human approval mode in frontend Single Screening flow
-  - Added explicit reviewer decision capture (Approve/Reject/Flag)
-  - Preserved non-blocking batch/multi-job modes for rapid comparison workflows
+  - Added explicit reviewer decision capture (Shortlist/Reject/Needs Review)
+  - Preserved non-blocking batch screening for rapid comparison workflows
 
 ### Challenge 3: Port conflicts during demo startup
 
@@ -286,7 +281,6 @@ Your classmates can convert this Markdown into a Word report with these sections
 - Architecture diagram (agents + tools + orchestrator)
 - Single screening result screenshot
 - Batch leaderboard screenshot
-- Multi-job ranking screenshot
 - Model metrics table
 - Pipeline case evaluation table
 

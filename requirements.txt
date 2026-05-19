@@ -8,3 +8,4 @@ numpy>=1.26.0
 pytest>=8.3.0
 streamlit>=1.38.0
 pdfminer.six>=20221105
+reportlab>=4.2.0

@@ -6,6 +6,7 @@ from pathlib import Path
 import torch
 
 from src.data.dataset import extract_skills, featurize
+from src.pipeline.scoring import label_from_score
 
 
 MODEL_FEATURE_COUNT = 8
@@ -46,17 +47,9 @@ def _simple_featureize(cv_text: str, job_text: str) -> torch.Tensor:
     return torch.tensor([featurize(cv_text, job_text)], dtype=torch.float32)
 
 
-def _label_from_score(score: float) -> str:
-    if score >= 0.67:
-        return "High"
-    if score >= 0.45:
-        return "Medium"
-    return "Low"
-
-
 def _heuristic_predict(features: torch.Tensor) -> tuple[str, float]:
     weighted_score = float(torch.dot(features[0], HEURISTIC_WEIGHTS).item())
-    return _label_from_score(weighted_score), round(weighted_score, 4)
+    return label_from_score(weighted_score), round(weighted_score, 4)
 
 
 def run_model_tool(cv_text: str, job_text: str, model_path: Path) -> ModelToolResult:

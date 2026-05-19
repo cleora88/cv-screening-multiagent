@@ -5,6 +5,11 @@ from typing import TYPE_CHECKING, Any
 
 from src.agents.profile_analyzer import profile_match
 from src.agents.schemas import ScreeningInput
+from src.pipeline.scoring import (
+    DISAGREEMENT_REVIEW_THRESHOLD,
+    label_from_score,
+    recommendation_from_label,
+)
 from src.agents.technical_matcher import technical_match
 from src.pipeline.hitl import human_checkpoint, needs_human_review
 
@@ -59,13 +64,13 @@ def run_screening(
     )
 
     score = (tech.score * 0.65) + (profile.score * 0.35)
-    label = "High" if score >= 0.67 else "Medium" if score >= 0.45 else "Low"
-    recommendation = "shortlist" if label == "High" else "review" if label == "Medium" else "reject"
+    label = label_from_score(score)
+    recommendation = recommendation_from_label(label)
     disagreement = abs(tech.score - profile.score)
     review_reasons: list[str] = []
     if low <= score <= high:
         review_reasons.append("borderline final score")
-    if disagreement >= 0.25:
+    if disagreement >= DISAGREEMENT_REVIEW_THRESHOLD:
         review_reasons.append("specialist disagreement")
     if not tech.success or not profile.success:
         review_reasons.append("agent failure fallback")

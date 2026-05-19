@@ -1,6 +1,18 @@
 [
   {
-    "candidate_id": "cand_001",
-    "cv_text": "ML engineer with 3 years experience in python pytorch and sql. Built deep learning project for classification and deployed on azure."
+    "candidate_id": "cand_data_001",
+    "cv_text": "Junior data analyst with 2 years experience using Python, SQL, pandas and Excel. Built weekly sales dashboards and reporting projects for a retail team. Bachelor degree in economics with strong stakeholder communication."
+  },
+  {
+    "candidate_id": "cand_data_002",
+    "cv_text": "Recent graduate with internship experience in Excel reporting, basic SQL queries and Tableau dashboards. Worked with a team to clean customer data and prepare monthly reports. Bachelor degree in business analytics."
+  },
+  {
+    "candidate_id": "cand_data_003",
+    "cv_text": "Retail cashier with basic Excel exposure and campaign planning. No programming, database, or analytics work experience."
+  },
+  {
+    "candidate_id": "cand_data_004",
+    "cv_text": "Data analyst with 3 years experience in Python, pandas, SQL, Power BI, Tableau and statistics. Delivered reporting dashboards for operations leaders and collaborated with finance stakeholders."
   }
 ]
