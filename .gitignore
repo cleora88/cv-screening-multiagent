@@ -21,6 +21,7 @@ env*/
 .env.local
 
 # Runtime artifacts
+logs/*.log
 logs/*.jsonl
 logs/*.json
 !logs/pipeline_evaluation.json
