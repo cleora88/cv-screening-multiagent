@@ -101,6 +101,57 @@ def _inject_styles() -> None:
                     radial-gradient(circle at bottom right, rgba(195, 226, 255, 0.34), rgba(255,255,255,0) 26%),
                     linear-gradient(180deg, var(--bg-start) 0%, var(--bg-end) 100%);
             }
+            [data-testid="stHeader"] {
+                background: transparent;
+                height: 0;
+            }
+            [data-testid="stToolbar"],
+            [data-testid="stDecoration"],
+            [data-testid="stStatusWidget"] {
+                display: none;
+            }
+            .stApp,
+            .stMarkdown,
+            .stMarkdown p,
+            .stMarkdown li,
+            .stMarkdown label,
+            .stRadio label,
+            .stCheckbox label,
+            .stToggle label,
+            .stTextInput label,
+            .stTextArea label,
+            .stSelectbox label,
+            .stFileUploader label,
+            [data-testid="stSidebar"],
+            [data-testid="stSidebar"] p,
+            [data-testid="stSidebar"] li,
+            [data-testid="stSidebar"] label,
+            [data-testid="stSidebar"] span {
+                color: var(--ink) !important;
+            }
+            .stApp h1,
+            .stApp h2,
+            .stApp h3,
+            .stApp h4,
+            .stApp h5,
+            .stApp h6,
+            [data-testid="stSidebar"] h1,
+            [data-testid="stSidebar"] h2,
+            [data-testid="stSidebar"] h3 {
+                color: var(--ink) !important;
+            }
+            .hero,
+            .hero *,
+            .hero h1,
+            .hero p,
+            .hero span {
+                color: #f8fffb !important;
+            }
+            [data-testid="stSidebar"] small,
+            [data-testid="stSidebar"] [data-testid="stCaptionContainer"],
+            [data-testid="stSidebar"] [data-testid="stCaptionContainer"] * {
+                color: var(--muted) !important;
+            }
             h1, h2, h3 {
                 letter-spacing: -0.03em;
             }
@@ -178,11 +229,11 @@ def _inject_styles() -> None:
                 margin: 0;
                 font-size: 1.2rem;
                 font-weight: 800;
-                color: var(--ink);
+                color: var(--ink) !important;
             }
             .section-copy {
                 margin: 0.32rem 0 0;
-                color: var(--muted);
+                color: var(--muted) !important;
                 font-size: 0.94rem;
             }
             .metric {
