@@ -1,5 +1,7 @@
 # CV Screening Multi-Agent System
 
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cleora88/cv-screening-multiagent/blob/main/CV_Screening_MultiAgent_Colab_Kaggle.ipynb)
+
 This is our UIR Integrated Project implementation for a simple HR screening use case: shortlisting candidates for a Junior Data Analyst role.
 
 The app lets a recruiter screen one CV, or several CVs at once, against the same job description. Each candidate is analyzed separately, then the system returns a recommendation: `shortlist`, `review`, or `reject`. Borderline or conflicting cases are not treated as final decisions; they are sent to a human review step.
@@ -50,7 +52,11 @@ One-command CrewAI-primary setup on Windows:
 
 ## Colab compatibility
 
-This project is compatible with Colab for training and deterministic pipeline execution.
+This project is compatible with Colab for training and deterministic pipeline execution. The fastest option is to use the notebook launcher:
+
+[Open the project in Colab](https://colab.research.google.com/github/cleora88/cv-screening-multiagent/blob/main/CV_Screening_MultiAgent_Colab_Kaggle.ipynb)
+
+The notebook can be run by itself. If the project files are not already present, it clones this GitHub repository automatically, installs dependencies, trains the baseline model only when needed, and runs the deterministic screening demo.
 
 ```python
 !python --version
