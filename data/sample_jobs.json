@@ -2,5 +2,17 @@
   {
     "job_id": "job_junior_data_analyst_001",
     "job_text": "Junior Data Analyst role requiring Python, SQL, pandas, Excel and reporting dashboards. Candidate should have 1+ years experience or internship experience, a bachelor degree, teamwork, communication and stakeholder collaboration."
+  },
+  {
+    "job_id": "job_business_intelligence_analyst_002",
+    "job_text": "Business Intelligence Analyst role requiring SQL, Excel, Power BI or Tableau, dashboard design, data cleaning, reporting automation, stakeholder communication and business KPI analysis. Candidate should have 2+ years experience in analytics or reporting."
+  },
+  {
+    "job_id": "job_machine_learning_intern_003",
+    "job_text": "Machine Learning Intern role requiring Python, pandas, scikit-learn or PyTorch, data preprocessing, model evaluation, statistics and clear technical reporting. Candidate should have project or internship experience and willingness to learn."
+  },
+  {
+    "job_id": "job_data_engineering_assistant_004",
+    "job_text": "Data Engineering Assistant role requiring Python, SQL, ETL basics, data pipelines, data quality checks, cloud awareness and collaboration with analytics teams. Candidate should understand databases, scripting and reliable data workflows."
   }
 ]

@@ -883,9 +883,48 @@ def _render_batch_results(
         on_click="ignore",
     )
 
-    with st.expander("Individual result details"):
-        for r in batch_results:
-            with st.expander(f"{r['candidate_id']} — {r['final_label']} ({r['final_score']:.4f})"):
+    st.subheader("Candidate Analysis Summary")
+    st.caption("Visible explanation for each ranked candidate. Open the full details below for tabs, audit logs, and raw agent outputs.")
+    for r in batch_results:
+        tech = r.get("technical", {})
+        profile = r.get("profile", {})
+        metadata = tech.get("metadata", {})
+        matched = metadata.get("matched_skills", [])
+        missing = metadata.get("missing_skills", [])
+        review_reasons = r.get("review_reasons", [])
+        human_review = r.get("human_review")
+
+        with st.container(border=True):
+            h1, h2, h3 = st.columns([2.2, 1, 1])
+            h1.markdown(f"**#{r.get('batch_rank', '?')} {r['candidate_id']}**")
+            h2.metric("Final score", f"{r['final_score']:.4f}", r["final_label"])
+            h3.metric("Decision", r["recommendation"])
+
+            s1, s2, s3 = st.columns(3)
+            s1.markdown(f"**Technical Matcher:** {tech.get('label', 'n/a')} ({tech.get('score', 0):.4f})")
+            s2.markdown(f"**Profile Analyzer:** {profile.get('label', 'n/a')} ({profile.get('score', 0):.4f})")
+            s3.markdown(f"**Model:** {metadata.get('model_used', 'unknown')}")
+
+            st.markdown(f"**Orchestrator:** {r.get('orchestrator_summary', 'No summary available.')}")
+            st.markdown(f"**Technical rationale:** {tech.get('rationale', 'No rationale available.')}")
+            st.markdown(f"**Profile rationale:** {profile.get('rationale', 'No rationale available.')}")
+
+            e1, e2 = st.columns(2)
+            e1.markdown("**Matched skills**")
+            e1.write(", ".join(matched) if matched else "None clearly matched")
+            e2.markdown("**Missing job skills**")
+            e2.write(", ".join(missing) if missing else "None")
+
+            if review_reasons:
+                st.warning("Needs review because: " + ", ".join(review_reasons))
+            if human_review:
+                st.info(f"Human checkpoint status: {human_review.get('status')}")
+            if r.get("llm_rationale"):
+                st.info(f"Ollama rationale: {r['llm_rationale']}")
+
+    with st.expander("Full individual result details"):
+        for idx, r in enumerate(batch_results):
+            with st.expander(f"{r['candidate_id']} - {r['final_label']} ({r['final_score']:.4f})", expanded=(idx == 0)):
                 _render_single_result(
                     r,
                     ollama_model_input,
