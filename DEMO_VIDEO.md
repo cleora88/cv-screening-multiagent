@@ -1,8 +1,6 @@
 # Demo Video
 
-Upload the 3-5 minute demo as an unlisted or private YouTube video, then replace the placeholder below with the final link.
-
-- YouTube link: TODO
+- YouTube demo: https://youtu.be/0dQ8BgRGr-Q?si=rbNSQPbt5E2BCT5Y
 
 Suggested demo flow:
 

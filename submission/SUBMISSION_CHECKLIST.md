@@ -6,7 +6,7 @@
 - [x] Report source (`REPORT.md`)
 - [x] Final report PDF (`submission/final_report.pdf`)
 - [x] Slides source (`submission/presentation_slides.md`)
-- [ ] Demo video (3-5 minutes): paste YouTube link in `DEMO_VIDEO.md`
+- [x] Demo video (3-5 minutes): `DEMO_VIDEO.md`
 
 Note: runtime JSONL logs are generated locally during demos and ignored by Git to avoid committing noisy run history.
 
