@@ -247,6 +247,7 @@ cv-screening-multiagent/
 - Report source: `REPORT.md`
 - Slides source: `submission/presentation_slides.md`
 - Report PDF target: `submission/final_report.pdf`
+- Demo video link target: `DEMO_VIDEO.md`
 
 HITL compliance note:
 
