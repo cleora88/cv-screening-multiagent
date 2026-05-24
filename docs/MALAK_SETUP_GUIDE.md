@@ -256,7 +256,5 @@ http://localhost:8502
 - `data/sample_jobs.json`: Junior Data Analyst job
 - `models/cv_fit_model.pt`: trained PyTorch model
 - `logs/pipeline_evaluation.json`: evaluation result
-- `REPORT.md`: report source
-- `submission/final_report.pdf`: final report PDF
-- `submission/presentation_slides.md`: defense slides
-
+- `submission/CV_Screening_MultiAgent_Report.pdf`: final report PDF
+- `submission/CV_Screening_Presentation_EN.pptx`: final presentation

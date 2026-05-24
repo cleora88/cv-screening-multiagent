@@ -87,8 +87,8 @@ python -m src.preflight_demo
 - Trained model: `models/cv_fit_model.pt`
 - Model metrics: `models/model_evaluation.md`
 - Pipeline evaluation: `logs/pipeline_evaluation.json`
-- Report PDF: `submission/final_report.pdf`
-- Slides: `submission/presentation_slides.md`
+- Report PDF: `submission/CV_Screening_MultiAgent_Report.pdf`
+- PowerPoint: `submission/CV_Screening_Presentation_EN.pptx`
 - Demo video link: `DEMO_VIDEO.md`
 
 ## Requirement Coverage
