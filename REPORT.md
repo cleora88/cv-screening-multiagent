@@ -72,7 +72,7 @@ Strict HITL is available in both CLI and frontend:
 ### 5.1 Data
 
 - Sample CV data: multiple candidate profiles
-- Sample job data: one Junior Data Analyst role for the simplified HR shortlist workflow
+- Sample job data: four built-in roles: Junior Data Analyst, Business Intelligence Analyst, Machine Learning Intern, and Data Engineering Assistant
 - Labeled evaluation dataset for pipeline validation
 
 ### 5.2 Model
@@ -133,6 +133,8 @@ The Streamlit frontend focuses on two demo modes that match the simplified HR us
 2. Batch Screening
    - Multiple CVs vs one selected job
    - Leaderboard ranking
+   - Visible candidate analysis cards with agent rationales, matched skills, missing skills, and review reasons
+   - Inline HR review decision capture for flagged or pending candidates
    - Charts and downloadable reports
 
 Additional presentation capabilities:
@@ -221,7 +223,7 @@ Requirement coverage summary:
 - Solution:
   - Added strict human approval mode in frontend Single Screening flow
   - Added explicit reviewer decision capture (Shortlist/Reject/Needs Review)
-  - Preserved non-blocking batch screening for rapid comparison workflows
+  - Added visible batch review controls for pending/flagged candidates
 
 ### Challenge 3: Port conflicts during demo startup
 
