@@ -918,7 +918,40 @@ def _render_batch_results(
             if review_reasons:
                 st.warning("Needs review because: " + ", ".join(review_reasons))
             if human_review:
-                st.info(f"Human checkpoint status: {human_review.get('status')}")
+                status = human_review.get("status")
+                st.info(f"Human checkpoint status: {status}")
+                if status in {"pending-human-approval", "auto-flagged", "flagged"}:
+                    review_key = f"batch_review_{selected_job_id}_{r['candidate_id']}"
+                    st.markdown("**HR review decision**")
+                    rc1, rc2, rc3 = st.columns([1.2, 1, 1])
+                    decision = rc1.selectbox(
+                        "Decision",
+                        ["Needs Review", "Approve / Shortlist", "Reject"],
+                        key=f"{review_key}_decision",
+                    )
+                    reviewer = rc2.text_input("Reviewer", value="", key=f"{review_key}_reviewer")
+                    note = rc3.text_input("Note", value="", key=f"{review_key}_note")
+                    if st.button("Save review decision", key=f"{review_key}_save", use_container_width=True):
+                        if decision == "Approve / Shortlist":
+                            saved_status = "approved"
+                            r["recommendation"] = "shortlist"
+                        elif decision == "Reject":
+                            saved_status = "rejected"
+                            r["recommendation"] = "reject"
+                        else:
+                            saved_status = "flagged"
+                            r["recommendation"] = "review"
+
+                        r["human_review"] = {
+                            "candidate_id": r["candidate_id"],
+                            "score": r["final_score"],
+                            "status": saved_status,
+                            "reviewer": reviewer.strip() or "anonymous",
+                            "reason": note.strip() or "manual batch review",
+                            "reasons": review_reasons,
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                        }
+                        st.success(f"Saved review decision: {saved_status}")
             if r.get("llm_rationale"):
                 st.info(f"Ollama rationale: {r['llm_rationale']}")
 
