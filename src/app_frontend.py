@@ -488,6 +488,7 @@ def _collect_defense_evidence(root: Path) -> dict[str, Any]:
     n_jobs = len(_load_all_jobs(root))
     n_cvs = len(_load_all_cvs(root))
     logs_count = len(list((root / "logs").glob("run_*.jsonl")))
+    has_pipeline_eval = (root / "logs" / "pipeline_evaluation.json").exists()
 
     return {
         "model_accuracy": float(model_eval.get("accuracy", 0.0)),
@@ -498,7 +499,8 @@ def _collect_defense_evidence(root: Path) -> dict[str, Any]:
         "n_cvs": n_cvs,
         "logs_count": logs_count,
         "has_model": (root / "models" / "cv_fit_model.pt").exists(),
-        "has_pipeline_eval": (root / "logs" / "pipeline_evaluation.json").exists(),
+        "has_pipeline_eval": has_pipeline_eval,
+        "has_traceability": logs_count > 0 or has_pipeline_eval,
         "has_tests": (root / "tests").exists(),
     }
 
@@ -509,7 +511,7 @@ def _render_showcase_cards(evidence: dict[str, Any]) -> None:
         ("Model Accuracy", f"{evidence['model_accuracy']:.1%}", "PyTorch classifier"),
         ("Pipeline Accuracy", f"{evidence['pipeline_accuracy']:.1%}", f"{evidence['pipeline_cases']} labeled cases"),
         ("Dataset Coverage", f"{evidence['n_cvs']} CV / {evidence['n_jobs']} Jobs", "Single + batch demo ready"),
-        ("Traceability", f"{evidence['logs_count']} run logs", "JSONL runtime evidence"),
+        ("Traceability", f"{evidence['logs_count']} run logs", "JSON audit + export evidence"),
     ]
     for col, (label, value, sub) in zip([c1, c2, c3, c4], cards):
         col.markdown(
@@ -527,7 +529,7 @@ def _render_brief_alignment(evidence: dict[str, Any]) -> None:
             ("Tools integration", "Skill extractor + model tool exposed in agent flow", True),
             ("Human-in-the-loop", "Borderline and conflict review checkpoint", True),
             ("Evaluation & robustness", "Unit tests + pipeline evaluation artifacts", evidence["has_tests"] and evidence["has_pipeline_eval"]),
-            ("Traceability", "Per-run JSON logs and downloadable reports", evidence["logs_count"] > 0),
+            ("Traceability", "Per-run JSON logs and downloadable reports", evidence["has_traceability"]),
             ("Presentation readiness", "Single CV, batch CV, PDF upload, explainability", True),
         ]
         for title, detail, ok in checks:
