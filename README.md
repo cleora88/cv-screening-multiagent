@@ -102,6 +102,7 @@ python -m src.preflight_demo
 - Pipeline evaluation: `logs/pipeline_evaluation.json`
 - Report PDF: `submission/CV_Screening_MultiAgent_Report.pdf`
 - Presentation PDF: `submission/CV_Screening_Presentation_EN.pdf`
+- Demo video file: `submission/CV_Screening_Demo_Video.mp4`
 - Demo video link: `DEMO_VIDEO.md`
 
 ## Requirement Coverage
