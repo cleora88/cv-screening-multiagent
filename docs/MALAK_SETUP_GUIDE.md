@@ -257,4 +257,4 @@ http://localhost:8502
 - `models/cv_fit_model.pt`: trained PyTorch model
 - `logs/pipeline_evaluation.json`: evaluation result
 - `submission/CV_Screening_MultiAgent_Report.pdf`: final report PDF
-- `submission/CV_Screening_Presentation_EN.pptx`: final presentation
+- `submission/CV_Screening_Presentation_EN.pdf`: final presentation
