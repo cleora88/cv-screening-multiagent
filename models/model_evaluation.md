@@ -2,7 +2,14 @@
 
 - Accuracy: 1.0000
 - Macro-F1: 1.0000
+- Test loss: 0.0021
 - Test samples: 60
+- Overfitting risk: low
+- Overfitting note: training and validation curves stay close enough for this small baseline model
+
+## Training Curves
+
+![Training curves](training_curves.png)
 
 ## Per-class metrics
 

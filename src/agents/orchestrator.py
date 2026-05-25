@@ -27,6 +27,12 @@ def run_screening(
     interactive_human_review: bool = True,
     require_human_approval: bool = False,
 ) -> dict[str, Any]:
+    """Run the full screening workflow for one candidate/job pair.
+
+    The orchestrator is the coordinator: it calls the two specialist agents,
+    blends their scores, checks whether a human review is needed, optionally
+    asks Ollama for a readable rationale, and writes audit logs.
+    """
     logger.log(
         "screening_started",
         {"candidate_id": screening_input.candidate_id, "job_id": screening_input.job_id},
@@ -37,6 +43,8 @@ def run_screening(
         status="started",
     )
 
+    # Specialist agents work independently so their scores can be compared.
+    # A large difference means the automated decision should be reviewed.
     tech = technical_match(screening_input, model_path)
     logger.log(
         "agent_result",
@@ -63,6 +71,8 @@ def run_screening(
         error=profile.error,
     )
 
+    # Technical fit is weighted more because this project screens for role
+    # requirements, while profile fit adds HR-style context.
     score = (tech.score * 0.65) + (profile.score * 0.35)
     label = label_from_score(score)
     recommendation = recommendation_from_label(label)
@@ -77,6 +87,8 @@ def run_screening(
 
     review = None
     if needs_human_review(score, low, high, disagreement=disagreement, agent_failure=(not tech.success or not profile.success)):
+        # HITL means "human in the loop": borderline, conflicted, or fallback
+        # cases are routed to a reviewer instead of being blindly accepted.
         rationale = f"Tech: {tech.rationale} | Profile: {profile.rationale}"
         if interactive_human_review:
             review = human_checkpoint(

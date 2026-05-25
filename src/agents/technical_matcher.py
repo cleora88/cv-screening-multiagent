@@ -7,10 +7,18 @@ from src.tools.skill_extractor_tool import extract_skills
 
 
 def technical_match(screening_input: ScreeningInput, model_path) -> AgentOutput:
+    """Score hard-skill fit using two tools: the model and skill overlap.
+
+    This is the "technical specialist" agent. The PyTorch model gives a learned
+    fit score, while the skill extractor gives transparent evidence about which
+    job skills were found in the CV.
+    """
     model_result = run_model_tool(screening_input.cv_text, screening_input.job_text, model_path)
     skill_result = extract_skills(screening_input.cv_text, screening_input.job_text)
 
     if not model_result.success and not skill_result.success:
+        # If both tools fail, return a neutral review instead of crashing the
+        # whole pipeline. This is important for demos and batch runs.
         return AgentOutput(
             agent_name="technical_matcher",
             score=0.5,
@@ -22,6 +30,8 @@ def technical_match(screening_input: ScreeningInput, model_path) -> AgentOutput:
             evidence=["DL model unavailable", "Skill extractor unavailable"],
         )
 
+    # The model carries most of the technical decision, and skill coverage keeps
+    # the result explainable because we can show matched/missing skills.
     blended = (model_result.score * 0.7) + (skill_result.coverage * 0.3)
     label = label_from_score(blended)
     recommendation = recommendation_from_label(label)

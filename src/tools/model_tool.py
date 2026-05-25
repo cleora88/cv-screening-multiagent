@@ -14,6 +14,8 @@ HEURISTIC_WEIGHTS = torch.tensor([0.35, 0.15, 0.15, 0.10, 0.05, 0.08, 0.07, 0.05
 
 
 class CVFitNet(torch.nn.Module):
+    """Small neural network that classifies CV/job fit into Low/Medium/High."""
+
     def __init__(self, in_features: int = MODEL_FEATURE_COUNT, hidden: int = 16, out_features: int = 3) -> None:
         super().__init__()
         self.net = torch.nn.Sequential(
@@ -44,15 +46,24 @@ _DEGREES = {"bachelor", "master", "phd", "doctorate", "engineer", "licence", "in
 
 
 def _simple_featureize(cv_text: str, job_text: str) -> torch.Tensor:
+    """Convert raw text into the 8 numeric features expected by CVFitNet."""
     return torch.tensor([featurize(cv_text, job_text)], dtype=torch.float32)
 
 
 def _heuristic_predict(features: torch.Tensor) -> tuple[str, float]:
+    """Fallback score used when the trained .pt file is missing or unreadable."""
     weighted_score = float(torch.dot(features[0], HEURISTIC_WEIGHTS).item())
     return label_from_score(weighted_score), round(weighted_score, 4)
 
 
 def run_model_tool(cv_text: str, job_text: str, model_path: Path) -> ModelToolResult:
+    """Run the trained PyTorch classifier, with a deterministic fallback.
+
+    In the presentation, this is the "DL model as a callable tool": agents call
+    this function, not the model directly. If the model artifact is unavailable,
+    the tool still returns a reasonable heuristic result so the pipeline remains
+    usable.
+    """
     try:
         features = _simple_featureize(cv_text, job_text)
         matched_skills = sorted(list(extract_skills(cv_text) & extract_skills(job_text)))
@@ -63,6 +74,9 @@ def run_model_tool(cv_text: str, job_text: str, model_path: Path) -> ModelToolRe
 
         if model_path.exists():
             try:
+                # The trained model outputs class probabilities for
+                # Low/Medium/High; the weighted average converts those
+                # probabilities into a normalized fit score.
                 state = torch.load(model_path, map_location="cpu", weights_only=True)
                 model.load_state_dict(state)
                 model.eval()

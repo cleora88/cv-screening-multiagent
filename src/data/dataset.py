@@ -129,6 +129,13 @@ _CV_LOW = [
 # ---------------------------------------------------------------------------
 
 def featurize(cv_text: str, job_text: str) -> list[float]:
+    """Convert a CV/job pair into eight explainable numeric model features.
+
+    Feature order:
+    1. skill coverage, 2. token overlap, 3. experience alignment,
+    4. seniority, 5. degree signal, 6. project evidence,
+    7. cloud skill alignment, 8. communication signal.
+    """
     cv_lower = normalize_text(cv_text)
     job_lower = normalize_text(job_text)
     cv_tokens = set(tokenize(cv_lower))
@@ -191,6 +198,7 @@ IDX2LABEL = {v: k for k, v in LABEL2IDX.items()}
 
 
 def generate_synthetic_dataset(n: int = 300, seed: int = SEED) -> list[dict]:
+    """Create labeled demo data for training when no external dataset is used."""
     rng = random.Random(seed)
     records = []
     candidate_id = 0

@@ -12,16 +12,25 @@ _DEGREE_TERMS = ("bachelor", "master", "phd", "doctorate", "engineer", "licence"
 
 
 def _extract_years(text: str) -> int:
+    """Find the largest explicit experience number, e.g. '5 years'."""
     matches = [int(value) for value in re.findall(r"(\d+)\+?\s*(?:years?|ans?)", text.lower())]
     return max(matches, default=0)
 
 
 def profile_match(screening_input: ScreeningInput) -> AgentOutput:
+    """Score non-technical profile fit with transparent HR-style signals.
+
+    This agent checks experience, seniority, project ownership, communication,
+    and education. These signals complement the technical agent so the final
+    decision is not based only on keyword matching.
+    """
     cv = screening_input.cv_text.lower()
     job = screening_input.job_text.lower()
     evidence: list[str] = []
     score = 0.25
 
+    # Start from a small baseline so candidates are not given a zero score just
+    # because one signal is absent; each detected profile signal adds evidence.
     cv_years = _extract_years(cv)
     job_years = _extract_years(job)
     years_alignment = min(cv_years / max(job_years, 1), 1.0) if job_years else float(cv_years > 0)

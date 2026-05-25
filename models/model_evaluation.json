@@ -35,5 +35,61 @@
       13
     ]
   ],
-  "n_samples": 60
+  "n_samples": 60,
+  "loss": 0.0021,
+  "test_metrics": {
+    "accuracy": 1.0,
+    "macro_f1": 1.0,
+    "per_class": {
+      "Low": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "Medium": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "High": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        24,
+        0,
+        0
+      ],
+      [
+        0,
+        23,
+        0
+      ],
+      [
+        0,
+        0,
+        13
+      ]
+    ],
+    "n_samples": 60,
+    "loss": 0.0021
+  },
+  "overfitting_report": {
+    "risk": "low",
+    "reason": "training and validation curves stay close enough for this small baseline model",
+    "final_epoch": 150,
+    "final_train_loss": 0.0014,
+    "final_val_loss": 0.0012,
+    "generalization_gap": -0.0002,
+    "best_val_loss": 0.0012,
+    "best_val_loss_epoch": 148,
+    "best_val_macro_f1": 1.0,
+    "best_val_macro_f1_epoch": 13,
+    "val_loss_increase_after_best": 0.0
+  },
+  "training_history_path": "C:\\Users\\User\\Downloads\\cv-screening-multiagent\\models\\training_history.json",
+  "training_curves_path": "C:\\Users\\User\\Downloads\\cv-screening-multiagent\\models\\training_curves.png"
 }

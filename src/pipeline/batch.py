@@ -23,7 +23,11 @@ def run_batch_screening(
     ollama_client: "OllamaClient | None" = None,
     require_human_approval: bool = False,
 ) -> list[dict[str, Any]]:
-    """Screen one or many CVs against one job using the normal agent workflow."""
+    """Screen many CVs against one job using the same workflow as single mode.
+
+    Batch mode does not invent a separate ranking algorithm. It runs the normal
+    two-agent pipeline for each CV, then sorts candidates by the final score.
+    """
     job_id = str(job_record.get("job_id", "job_demo")).strip() or "job_demo"
     job_text = str(job_record.get("job_text", "")).strip()
     total = len(cv_records)
@@ -40,6 +44,8 @@ def run_batch_screening(
 
     results: list[dict[str, Any]] = []
     for index, cv_record in enumerate(cv_records, start=1):
+        # Batch runs are usually non-interactive, so run_screening records
+        # pending/flagged review states instead of blocking for terminal input.
         candidate_id = str(cv_record.get("candidate_id", f"candidate_{index:03d}")).strip()
         cv_text = str(cv_record.get("cv_text", "")).strip()
         result = run_screening(

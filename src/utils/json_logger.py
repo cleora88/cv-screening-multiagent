@@ -7,6 +7,8 @@ from typing import Any
 
 
 class JsonLogger:
+    """Append one JSON object per event for traceability and defense evidence."""
+
     def __init__(self, log_dir: Path) -> None:
         self.log_dir = log_dir
         self.log_dir.mkdir(parents=True, exist_ok=True)
@@ -26,6 +28,7 @@ class JsonLogger:
         status: str | None = None,
         error: str | None = None,
     ) -> None:
+        """Write a structured audit row for an agent action or pipeline event."""
         derived_error = error or payload.get("error")
         derived_status = status or payload.get("status") or ("failure" if derived_error else "success")
         row = {

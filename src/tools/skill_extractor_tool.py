@@ -16,6 +16,11 @@ class SkillToolResult:
 
 
 def extract_skills(cv_text: str, job_text: str) -> SkillToolResult:
+    """Compare required job skills with skills detected in the CV.
+
+    The returned coverage ratio is easy to explain: matched job skills divided
+    by total detected job skills. Missing skills are kept for evidence in the UI.
+    """
     try:
         cv_skills = extract_skill_set(cv_text)
         job_skills = extract_skill_set(job_text)

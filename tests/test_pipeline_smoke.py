@@ -18,4 +18,5 @@ def test_pipeline_smoke(tmp_path: Path) -> None:
     out = run_screening(payload, settings.model_path_abs, 0.45, 0.55, logger)
     assert out["candidate_id"] == "cand_test"
     assert out["final_label"] in {"Low", "Medium", "High"}
+    assert out["technical"]["metadata"]["model_used"] == "trained_pytorch_model"
     assert Path(logger.log_file).exists()

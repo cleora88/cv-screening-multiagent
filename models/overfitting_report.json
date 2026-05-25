@@ -1,0 +1,13 @@
+{
+  "risk": "low",
+  "reason": "training and validation curves stay close enough for this small baseline model",
+  "final_epoch": 150,
+  "final_train_loss": 0.0014,
+  "final_val_loss": 0.0012,
+  "generalization_gap": -0.0002,
+  "best_val_loss": 0.0012,
+  "best_val_loss_epoch": 148,
+  "best_val_macro_f1": 1.0,
+  "best_val_macro_f1_epoch": 13,
+  "val_loss_increase_after_best": 0.0
+}

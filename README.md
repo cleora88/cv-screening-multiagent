@@ -58,6 +58,19 @@ Train or regenerate the model:
 python -m src.train_baseline
 ```
 
+Train with overfitting evidence and loss curves:
+
+```powershell
+python -m src.train_baseline --epochs 150 --log-every 10 --plot-curves --overfit-check
+```
+
+This saves:
+
+- `models/training_curves.png`: training loss, validation loss, validation accuracy, and validation macro-F1
+- `models/training_history.json`: epoch-by-epoch training/validation metrics
+- `models/overfitting_report.json`: automatic overfitting risk summary
+- `models/model_evaluation.md`: final accuracy, macro-F1, test loss, and confusion matrix
+
 Run batch screening:
 
 ```powershell

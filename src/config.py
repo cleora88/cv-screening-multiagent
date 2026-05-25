@@ -11,6 +11,8 @@ load_dotenv()
 
 @dataclass(frozen=True)
 class Settings:
+    """Central configuration loaded from environment variables when present."""
+
     project_root: Path = Path(__file__).resolve().parents[1]
     log_dir: Path = Path(os.getenv("LOG_DIR", "logs"))
     model_path: Path = Path(os.getenv("MODEL_PATH", "models/cv_fit_model.pt"))

@@ -13,6 +13,11 @@ def needs_human_review(
     disagreement: float = 0.0,
     agent_failure: bool = False,
 ) -> bool:
+    """Decide whether automation should pause for HR review.
+
+    A candidate is reviewed when the score is borderline, when the two agents
+    strongly disagree, or when an agent had to use a failure fallback.
+    """
     return low <= score <= high or disagreement >= DISAGREEMENT_REVIEW_THRESHOLD or agent_failure
 
 

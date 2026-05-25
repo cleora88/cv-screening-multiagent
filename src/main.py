@@ -15,12 +15,14 @@ from src.utils.json_logger import JsonLogger
 
 
 def _load_sample_data(root: Path) -> tuple[dict, dict]:
+    """Use bundled demo records when the user does not pass input files."""
     cv = json.loads((root / "data" / "sample_cvs.json").read_text(encoding="utf-8"))[0]
     job = json.loads((root / "data" / "sample_jobs.json").read_text(encoding="utf-8"))[0]
     return cv, job
 
 
 def _load_json_record(path: Path, index: int = 0) -> dict:
+    """Load one JSON object, or pick one object from a JSON list."""
     if not path.exists():
         raise FileNotFoundError(f"Input file not found: {path}")
 
@@ -42,6 +44,7 @@ def _load_json_record(path: Path, index: int = 0) -> dict:
 
 
 def _load_json_records(path: Path) -> list[dict]:
+    """Load CV records for batch mode and normalize a single object to a list."""
     if not path.exists():
         raise FileNotFoundError(f"Input file not found: {path}")
 
@@ -61,6 +64,7 @@ def _load_json_records(path: Path) -> list[dict]:
 
 
 def _require_fields(record: dict, required: tuple[str, ...], name: str) -> None:
+    """Fail early with a clear message when required demo fields are missing."""
     missing = [field for field in required if not str(record.get(field, "")).strip()]
     if missing:
         raise ValueError(f"{name} is missing required fields: {', '.join(missing)}")
@@ -98,6 +102,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    """CLI entry point for single screening, batch screening, and runtime choice."""
     root = Path(__file__).resolve().parents[1]
     args = _build_parser().parse_args()
     logger = JsonLogger(settings.log_dir_abs)
@@ -157,6 +162,8 @@ def main() -> None:
 
     runtime = "crewai" if args.use_crewai else args.runtime
 
+    # Runtime selection is explicit for demos: CrewAI is preferred in auto mode,
+    # but the deterministic path always works without external agent packages.
     use_crewai = False
     if runtime == "crewai":
         use_crewai = True
@@ -226,8 +233,8 @@ def main() -> None:
             print(f"[warning] CrewAI run failed: {crew_result.get('error', 'unknown error')}")
             print("[warning] Continuing with deterministic orchestrator runtime.")
 
-        # Always run orchestrator scoring/HITL so runtime behavior is consistent
-        # with minimum project requirements even when CrewAI is selected.
+        # Always run deterministic scoring/HITL after CrewAI so the final JSON
+        # output keeps the same fields no matter which runtime is selected.
         result = run_screening(
             screening_input=screening_input,
             model_path=settings.model_path_abs,

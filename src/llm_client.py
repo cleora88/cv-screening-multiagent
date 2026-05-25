@@ -77,7 +77,7 @@ class OllamaClient:
         tech_rationale: str,
         profile_rationale: str,
     ) -> str:
-        """Ask the LLM for a short professional hiring recommendation."""
+        """Ask the LLM for wording only; it does not change numeric scores."""
         prompt = (
             "You are an expert HR analyst. Based on the automated CV screening result "
             "below, write a concise 2-3 sentence professional hiring recommendation.\n\n"
